@@ -27,8 +27,8 @@ class UnexpectedResponse(InstagramException):
 		super().__init__("Get unexpected response from '{0}' with data: {1}".format(url, str(data)))
 
 class NotUpdatedElement(InstagramException):
-	def __init__(self, element):
-		super().__init__("Cannot use not updated {0} {1}".format(element.__class__.__name__, element))
+	def __init__(self, element, argument):
+		super().__init__("Element '{0}' haven't argument {1}. Please, update this element".format(element.__repr__(), argument))
 
 # Exception struct
 class ExceptionTree:
@@ -85,7 +85,6 @@ class ElementConstructor(type):
 		fields["__del__"]=ElementConstructor.__custom_del__
 		fields["__str__"]=lambda self: str(self.__getattribute__(self.__primarykey__))
 		fields["__repr__"]=lambda self: str(self.__getattribute__(self.__primarykey__))
-		fields["__updated__"]=False
 		return type.__new__(cls, name, classes, fields)
 	
 	def __custom_del__(self):
@@ -148,23 +147,28 @@ class Agent:
 			obj.__setDataFromJSON__(response.json())
 		except (ValueError, KeyError):
 			raise UnexpectedResponse(response.url, response.text)			
-		obj.__updated__=True
 	
 	@exceptionDecorator
 	def getMedia(self, obj, count=12, settings={}):
 		# Checks data
 		if not isinstance(settings, dict):
 			raise TypeError("'settings' must be dict type")
+		if not isinstance(count, int):
+			raise TypeError("'count' must be int type")
 		if isinstance(obj, Account):
+			if obj.id==None:
+				raise NotUpdatedElement(obj, 'id')
 			data={'query_id': 17888483320059182, 'variables': '{"id": '+str(obj.id)+', "first": '+str(count)+'}'}
 		elif isinstance(obj, Location):
+			if obj.id==None:
+				raise NotUpdatedElement(obj, 'id')
 			data={'query_id': 17865274345132052, 'variables': '{"id": '+str(obj.id)+', "first": '+str(count)+'}'}
 		elif isinstance(obj, Tag):
+			if obj.name==None:
+				raise NotUpdatedElement(obj, 'name')
 			data={'query_id': 17875800862117404, 'variables': '{"tag_name": "'+obj.name+'", "first": '+str(count)+'}'}
 		else:
 			raise TypeError("'obj' must be Account type")
-		if not obj.__updated__:
-			raise NotUpdatedElement(account)
 		
 		# Set data
 		if 'params' in settings:
@@ -191,6 +195,24 @@ class Agent:
 					data=response.json()['data']['hashtag']['edge_hashtag_to_media']
 				for media in data['edges']:
 					m=Media(media['node']['shortcode'])
+					m.id=media['node']['id']
+					m.caption=media['node']['edge_media_to_caption']['edges'][0]['node']['text']
+					if isinstance(obj, Account):
+						m.owner=obj
+					m.date=media['node']['taken_at_timestamp']
+					if 'location' in media['node']:
+						m.location=Location(media['node']['location']['id'])
+					if isinstance(obj, Location):
+						m.location=obj
+					if isinstance(obj, Account):
+						m.likes_count=media['node']['edge_media_preview_like']['count']
+					else:
+						m.likes_count=media['node']['edge_liked_by']
+					m.comments_count=media['node']['edge_media_to_comment']['count']
+					m.comments_disabled=media['node']['comments_disabled']
+					m.is_video=media['node']['is_video']
+					m.display_url=media['node']['display_url']
+					m.dimensions=(media['node']['dimensions']['width'], media['node']['dimensions']['height'])
 					obj.media.add(m)
 					media_set.add(m)
 				if len(data['edges'])<count and data['page_info']['has_next_page']:
@@ -210,10 +232,10 @@ class Agent:
 		# Check data
 		if not isinstance(settings, dict):
 			raise TypeError("'settings' must be dict type")
+		if not isinstance(count, int):
+			raise TypeError("'count' must be int type")
 		if not isinstance(media, Media):
 			raise TypeError("'media' must be Media type")
-		if not media.__updated__:
-			raise NotUpdatedElement(media)
 		
 		# Set data
 		data={'query_id': 17864450716183058, "variables": '{"shortcode": "'+media.code+'", "first": '+str(count)+'}'}
@@ -237,6 +259,10 @@ class Agent:
 				media.likes_count=data['count']
 				for edge in data['edges']:
 					account=Account(edge['node']['username'])
+					account.id=edge['node']['id']
+					account.profile_pic_url=edge['node']['profile_pic_url']
+					account.is_verified=edge['node']['is_verified']
+					account.full_name=edge['node']['full_name']
 					media.likes.add(account)
 					likes_set.add(account)
 				if len(data['edges'])<count and data['page_info']['has_next_page']:
@@ -253,10 +279,10 @@ class Agent:
 		# Check data
 		if not isinstance(settings, dict):
 			raise TypeError("'settings' must be dict type")
+		if not isinstance(count, int):
+			raise TypeError("'count' must be int type")
 		if not isinstance(media, Media):
 			raise TypeError("'media' must be Media type")
-		if not media.__updated__:
-			raise NotUpdatedElement(media)
 		
 		# Set data
 		data={'query_id': 17852405266163336, 'variables': '{"shortcode": "'+media.code+'", "first": '+str(count)+'}'}
@@ -343,10 +369,6 @@ class Account(metaclass=ElementConstructor):
 		self.media_count=None
 		self.is_private=None
 		self.is_verified=None
-		self.has_blocked_viewer=None
-		self.blocked_by_viewer=None
-		self.has_requested_viewer=None
-		self.requested_by_viewer=None
 		self.country_block=None
 		# Lists
 		self.media=set()
@@ -366,10 +388,6 @@ class Account(metaclass=ElementConstructor):
 		self.media_count=data['media']['count']
 		self.is_private=data['is_private']
 		self.is_verified=data['is_verified']
-		self.has_blocked_viewer=data['has_blocked_viewer']
-		self.blocked_by_viewer=data['blocked_by_viewer']
-		self.has_requested_viewer=data['has_requested_viewer']
-		self.requested_by_viewer=data['requested_by_viewer']
 		self.country_block=data['country_block']
 
 class AgentAccount(Account, Agent):
@@ -429,10 +447,12 @@ class AgentAccount(Account, Agent):
 			account=self
 		if not isinstance(settings, dict):
 			raise TypeError("'settings' must be dict type")
+		if not isinstance(count, int):
+			raise TypeError("'count' must be int type")
 		if not isinstance(account, Account):
 			raise TypeError("'account' must be Account type")
-		if not account.__updated__:
-			raise NotUpdatedElement(account)
+		if account.id==None:
+			raise NotUpdatedElement(account, 'id')
 			
 		# Set data
 		data={"query_id": 17874545323001329, 'variables': '{"id": '+str(account.id)+', "first": '+str(count)+'}'}
@@ -456,6 +476,10 @@ class AgentAccount(Account, Agent):
 				account.follows_count=data['count']
 				for edge in data['edges']:
 					a=Account(edge['node']['username'])
+					a.id=edge['node']['id']
+					a.profile_pic_url=edge['node']['profile_pic_url']
+					a.is_verified=edge['node']['is_verified']
+					a.full_name=edge['node']['full_name']
 					account.follows.add(a)
 					follows_set.add(a)
 				# Recursive calling method if not all elements was loading
@@ -475,10 +499,12 @@ class AgentAccount(Account, Agent):
 			account=self
 		if not isinstance(settings, dict):
 			raise TypeError("'settings' must be dict type")
+		if not isinstance(count, int):
+			raise TypeError("'count' must be int type")
 		if not isinstance(account, Account):
 			raise TypeError("'account' must be Account type")
-		if not account.__updated__:
-			raise NotUpdatedElement(account)
+		if account.id==None:
+			raise NotUpdatedElement(account, 'id')
 		
 		# Set data
 		data={'query_id': 17851374694183129, 'variables': '{"id": '+str(account.id)+', "first": '+str(count)+'}'}
@@ -502,6 +528,10 @@ class AgentAccount(Account, Agent):
 				account.followers_count=data['count']
 				for edge in data['edges']:
 					a=Account(edge['node']['username'])
+					a.id=edge['node']['id']
+					a.profile_pic_url=edge['node']['profile_pic_url']
+					a.is_verified=edge['node']['is_verified']
+					a.full_name=edge['node']['full_name']
 					account.followers.add(a)
 					followers_set.add(a)
 				# Recursive calling method if not all elements was loading
@@ -521,11 +551,11 @@ class AgentAccount(Account, Agent):
 			raise TypeError("'media' must be Media type")
 		if not isinstance(settings, dict):
 			raise TypeError("'settings' must be dict type")
-		if not media.__updated__:
-			raise NotUpdatedElement(media)
+		if media.id==None:
+			raise NotUpdatedElement(media, 'id')
 		
 		response=self.__action_handler__(
-			referer="https://www.instagram.com/p/{0}/?taken-by={1}".format(media.code, media.owner.login),
+			referer="https://www.instagram.com/p/{0}/".format(media.code),
 			url="https://www.instagram.com/web/likes/{0}/like/".format(media.id),
 		)
 		
@@ -545,12 +575,12 @@ class AgentAccount(Account, Agent):
 			raise TypeError("'media' must be Media type")
 		if not isinstance(settings, dict):
 			raise TypeError("'settings' must be dict type")
-		if not media.__updated__:
-			raise NotUpdatedElement(media)
+		if media.id==None:
+			raise NotUpdatedElement(media, 'id')
 		
 		# Request
 		response=self.__action_handler__(
-			referer="https://www.instagram.com/p/{0}/?taken-by={1}".format(media.code, media.owner.login),
+			referer="https://www.instagram.com/p/{0}/".format(media.code),
 			url="https://www.instagram.com/web/likes/{0}/unlike/".format(media.id),
 		)
 		
@@ -572,12 +602,12 @@ class AgentAccount(Account, Agent):
 			raise TypeError("'text' must be str type")
 		if not isinstance(settings, dict):
 			raise TypeError("'settings' must be dict type")
-		if not media.__updated__:
-			raise NotUpdatedElement(media)
+		if media.id==None:
+			raise NotUpdatedElement(media, 'id')
 		
 		# Send request
 		response=self.__action_handler__(
-			referer="https://www.instagram.com/p/{0}/?taken-by={1}".format(media.code, media.owner.login),
+			referer="https://www.instagram.com/p/{0}/".format(media.code),
 			url="https://www.instagram.com/web/comments/{0}/add/".format(media.id),
 			data={'comment_text': text},
 		)
@@ -605,22 +635,71 @@ class AgentAccount(Account, Agent):
 			raise TypeError("'settings' must be dict type")
 		if not isinstance(comment, Comment):
 			raise TypeError("'comment' must be Comment type")
-		if not comment.__updated__:
-			raise NotUpdatedElement(comment)
-		if not comment.media.__updated__:
-			raise NotUpdatedElement(comment.media)
+		if not comment.media==None:
+			raise NotUpdatedElement(comment, 'media')
+		if not comment.media.id==None:
+			raise NotUpdatedElement(comment.media, 'id')
 		
 		# Send request
 		response=self.__action_handler__(
-			referer="https://www.instagram.com/p/{0}/?taken-by={1}".format(comment.media.code, comment.media.owner.login),
+			referer="https://www.instagram.com/p/{0}/".format(comment.media.code),
 			url="https://www.instagram.com/web/comments/{0}/delete/{1}/".format(comment.media.id, comment.id),
 		)
 		
-		print(response.status_code)
 		# Parsing
 		try:
 			if response.json()['status']=='ok':
 				del comment
+				return True
+			else:
+				return False
+		except (ValueError, KeyError):
+			raise UnexpectedResponse(response.url, response.text)
+
+	@Agent.exceptionDecorator
+	def follow(self, account, settings={}):
+		# Check data
+		if not isinstance(settings, dict):
+			raise TypeError("'settings' must be dict type")
+		if not isinstance(account, Account):
+			raise TypeError("'account' must be Account type")
+		if account.id==None:
+			raise NotUpdatedElement(account, 'id')
+			
+		# Send request
+		response=self.__action_handler__(
+			referer="https://www.instagram.com/{0}".format(account.login),
+			url="https://www.instagram.com/web/friendships/{0}/follow/".format(account.id),
+		)
+		
+		# Parsing
+		try:
+			if response.json()['status']=='ok':
+				return True
+			else:
+				return False
+		except (ValueError, KeyError):
+			raise UnexpectedResponse(response.url, response.text)
+	
+	@Agent.exceptionDecorator
+	def unfollow(self, account, settings={}):
+		# Check data
+		if not isinstance(settings, dict):
+			raise TypeError("'settings' must be dict type")
+		if not isinstance(account, Account):
+			raise TypeError("'account' must be Account type")
+		if account.id==None:
+			raise NotUpdatedElement(account, 'id')
+			
+		# Send request
+		response=self.__action_handler__(
+			referer="https://www.instagram.com/{0}".format(account.login),
+			url="https://www.instagram.com/web/friendships/{0}/unfollow/".format(account.id),
+		)
+		
+		# Parsing
+		try:
+			if response.json()['status']=='ok':
 				return True
 			else:
 				return False
@@ -674,6 +753,8 @@ class Media(metaclass=ElementConstructor):
 		self.comments_disabled=None
 		self.is_video=None
 		self.is_ad=None
+		self.display_url=None
+		self.dimensions=None
 		# Lists
 		self.likes=set()
 		self.comments=set()
@@ -695,6 +776,7 @@ class Media(metaclass=ElementConstructor):
 		self.comments_disabled=data['comments_disabled']
 		self.is_video=data['is_video']
 		self.is_ad=data['is_ad']
+		self.display_url=data['display_url']
 
 class Location(metaclass=ElementConstructor):
 	__cache__={}
@@ -753,5 +835,3 @@ class Comment(metaclass=ElementConstructor):
 		self.owner=owner
 		self.text=text
 		self.data=data
-		self.__updated__=True
-

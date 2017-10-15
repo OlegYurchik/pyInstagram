@@ -752,6 +752,7 @@ class Media(metaclass=ElementConstructor):
 		self.comments_count=None
 		self.comments_disabled=None
 		self.is_video=None
+		self.video_url = None
 		self.is_ad=None
 		self.display_url=None
 		self.dimensions=None
@@ -775,6 +776,8 @@ class Media(metaclass=ElementConstructor):
 		self.comments_count=data['edge_media_to_comment']['count']
 		self.comments_disabled=data['comments_disabled']
 		self.is_video=data['is_video']
+		if self.is_video:
+			self.video_url = data['video_url']
 		self.is_ad=data['is_ad']
 		self.display_url=data['display_url']
 

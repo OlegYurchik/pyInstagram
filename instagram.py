@@ -196,7 +196,8 @@ class Agent:
 				for media in data['edges']:
 					m=Media(media['node']['shortcode'])
 					m.id=media['node']['id']
-					m.caption=media['node']['edge_media_to_caption']['edges'][0]['node']['text']
+					if media['node']['edge_media_to_caption']['edges']:
+						m.caption=media['node']['edge_media_to_caption']['edges'][0]['node']['text']
 					if isinstance(obj, Account):
 						m.owner=obj
 					m.date=media['node']['taken_at_timestamp']
@@ -434,6 +435,107 @@ class AgentAccount(Account, Agent):
 		if not obj:
 			obj=self
 		return super().update(obj, settings)
+	
+	def feed(self, count=12, settings={}):
+		# Check set and data
+		if not isinstance(settings, dict):
+			raise TypeError("'settings' must be dict type")
+		if not isinstance(count, int):
+			raise TypeError("'count' must be int type")
+		
+		# Set data
+		feed=set()
+		stop=False
+		
+		# Request for get info
+		response=self.__send_get_request__(
+			"https://www.instagram.com/?__a=1",
+			**settings,
+		)
+		
+		# Parsing info
+		try:
+			data=response.json()['graphql']['user']['edge_web_feed_timeline']
+			cursor=data['page_info']['end_cursor']
+			data=data['edges']
+			for edge in data:
+				edge=edge['node']
+				media=Media(edge['shortcode'])
+				media.id=int(edge['id'])
+				if edge['edge_media_to_caption']['edges']:
+					media.caption=edge['edge_media_to_caption']['edges'][0]['node']['text']
+				media.owner=Account(edge['owner']['username'])
+				media.owner.id=int(edge['owner']['id'])
+				media.owner.full_name=edge['owner']['full_name']
+				media.owner.profile_pic_url=edge['owner']['profile_pic_url']
+				media.owner.is_private=edge['owner']['is_private']
+				media.date=edge['taken_at_timestamp']
+				if edge['location']:
+					media.location=Location(edge['location']['id'])
+				media.likes_count=edge['edge_media_preview_like']['count']
+				media.comments_count=edge['edge_media_to_comment']['count']
+				media.comments_disabled=edge['comments_disabled']
+				media.is_video=edge['is_video']
+				if 'video_url' in edge:
+					media.video_url=edge['video_url']
+				media.display_url=edge['display_url']
+				media.dimensions=(edge['dimensions']['width'], edge['dimensions']['height'])
+				feed.add(media)
+		except (ValueError, KeyError):
+			raise UnexpectedResponse(response.url, response.text)
+		
+		# Set data
+		stop=(count<=len(feed))
+		count-=len(feed)
+		data={'query_id': 17842794232208280, 'variables': '{"fetch_media_item_count":'+str(count)+',"fetch_media_item_cursor":"'+cursor+'","fetch_comment_count":4,"fetch_like":10,"has_stories":false}'}
+		if 'params' in settings:
+			settings['params'].update(data)
+		else:
+			settings['params']=data
+		
+		while not stop:
+			# Request for get info
+			response=self.__send_get_request__(
+				"https://www.instagram.com/graphql/query/",
+				**settings,
+			)
+			
+			# Parsing info
+			try:
+				data=response.json()['data']['user']['edge_web_feed_timeline']
+				cursor=data['page_info']['end_cursor']
+				for edge in data['edges']:
+					edge=edge['node']
+					media=Media(edge['shortcode'])
+					media.id=int(edge['id'])
+					if edge['edge_media_to_caption']['edges']:
+						media.caption=edge['edge_media_to_caption']['edges'][0]['node']['text']
+					media.owner=Account(edge['owner']['username'])
+					media.owner.id=int(edge['owner']['id'])
+					media.owner.full_name=edge['owner']['full_name']
+					media.owner.profile_pic_url=edge['owner']['profile_pic_url']
+					media.owner.is_private=edge['owner']['is_private']
+					media.date=edge['taken_at_timestamp']
+					if edge['location']:
+						media.location=Location(edge['location']['id'])
+					media.likes_count=edge['edge_media_preview_like']['count']
+					media.comments_count=edge['edge_media_to_comment']['count']
+					media.comments_disabled=edge['comments_disabled']
+					media.is_video=edge['is_video']
+					if 'video_url' in edge:
+						media.video_url=edge['video_url']
+					media.display_url=edge['display_url']
+					media.dimensions=(edge['dimensions']['width'], edge['dimensions']['height'])
+					feed.add(media)
+				# Recursive calling method if not all elements was loading
+				if len(data['edges'])<count and data['page_info']['has_next_page']:
+					count=count-len(data['edges'])
+					settings['params']['variables']='{"fetch_media_item_count":'+str(count)+',"fetch_media_item_cursor":"'+data['page_info']['end_cursor']+'","fetch_comment_count":4,"fetch_like":10,"has_stories":false}'
+				else:
+					stop=True
+			except (ValueError, KeyError):
+				raise UnexpectedResponse(response.url, response.text)
+		return feed
 	
 	def getMedia(self, obj=None, count=12, settings={}):
 		if not obj:
@@ -752,7 +854,7 @@ class Media(metaclass=ElementConstructor):
 		self.comments_count=None
 		self.comments_disabled=None
 		self.is_video=None
-		self.video_url = None
+		self.video_url=None
 		self.is_ad=None
 		self.display_url=None
 		self.dimensions=None
@@ -786,7 +888,7 @@ class Location(metaclass=ElementConstructor):
 	__primarykey__="id"
 	
 	def __init__(self, id):
-		self.id=int(id)
+		self.id=id
 		self.slug=None
 		self.name=None
 		self.has_public_page=None

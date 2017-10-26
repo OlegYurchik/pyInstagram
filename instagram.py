@@ -175,7 +175,7 @@ class Agent:
 			settings['params'].update(data)
 		else:
 			settings['params']=data
-		media_set=set()
+		media_list=[]
 		stop=False
 		
 		while not stop:
@@ -215,7 +215,7 @@ class Agent:
 					m.display_url=media['node']['display_url']
 					m.dimensions=(media['node']['dimensions']['width'], media['node']['dimensions']['height'])
 					obj.media.add(m)
-					media_set.add(m)
+					media_list.append(m)
 				if len(data['edges'])<count and data['page_info']['has_next_page']:
 					count=count-len(data['edges'])
 					if isinstance(obj, Tag):
@@ -226,7 +226,7 @@ class Agent:
 					stop=True
 			except (ValueError, KeyError):
 				raise UnexpectedResponse(response.url, response.text)
-		return media_set
+		return media_list
 	
 	@exceptionDecorator
 	def getLikes(self, media, count=20,	settings={}):
@@ -244,7 +244,7 @@ class Agent:
 			settings['params'].update(data)
 		else:
 			settings['params']=data
-		likes_set=set()
+		likes_list=[]
 		stop=False
 		
 		while not stop:
@@ -265,7 +265,7 @@ class Agent:
 					account.is_verified=edge['node']['is_verified']
 					account.full_name=edge['node']['full_name']
 					media.likes.add(account)
-					likes_set.add(account)
+					likes_list.append(account)
 				if len(data['edges'])<count and data['page_info']['has_next_page']:
 					count=count-len(data['edges'])
 					settings['params']['variables']='{"shortcode": "'+media.code+'", "first": '+str(count)+', "after": "'+data['page_info']['end_cursor']+'"}'
@@ -273,7 +273,7 @@ class Agent:
 					stop=True
 			except (ValueError, KeyError):
 				raise UnexpectedResponse(response.url, response.text)
-		return likes_set
+		return likes_list
 	
 	@exceptionDecorator
 	def getComments(self, media, count=20, settings={}):
@@ -291,7 +291,7 @@ class Agent:
 			settings['params'].update(data)
 		else:
 			settings['params']=data
-		comments_set=set()
+		comments_list=[]
 		stop=False
 		
 		while not stop:
@@ -314,7 +314,7 @@ class Agent:
 						data=edge['node']['created_at'],
 					)
 					media.comments.add(comment)
-					comments_set.add(comment)
+					comments_list.append(comment)
 				if len(data['edges'])<count and data['page_info']['has_next_page']:
 					count=count-len(data['edges'])
 					settings['params']['variables']='{"shortcode": "'+media.code+'", "first": '+str(count)+', "after": "'+data['page_info']['end_cursor']+'"}'
@@ -322,7 +322,7 @@ class Agent:
 					stop=True
 			except (ValueError, KeyError):
 				raise UnexpectedResponse(response.url, response.text)
-		return comments_set
+		return comments_list
 
 	def __send_get_request__(self, *args, **kwargs):
 		count=0
@@ -444,7 +444,7 @@ class AgentAccount(Account, Agent):
 			raise TypeError("'count' must be int type")
 		
 		# Set data
-		feed=set()
+		feed=[]
 		stop=False
 		
 		# Request for get info
@@ -480,7 +480,7 @@ class AgentAccount(Account, Agent):
 					media.video_url=edge['video_url']
 				media.display_url=edge['display_url']
 				media.dimensions=(edge['dimensions']['width'], edge['dimensions']['height'])
-				feed.add(media)
+				feed.append(media)
 		except (ValueError, KeyError):
 			raise UnexpectedResponse(response.url, response.text)
 		
@@ -526,7 +526,7 @@ class AgentAccount(Account, Agent):
 						media.video_url=edge['video_url']
 					media.display_url=edge['display_url']
 					media.dimensions=(edge['dimensions']['width'], edge['dimensions']['height'])
-					feed.add(media)
+					feed.append(media)
 				# Recursive calling method if not all elements was loading
 				if len(data['edges'])<count and data['page_info']['has_next_page']:
 					count=count-len(data['edges'])
@@ -562,7 +562,7 @@ class AgentAccount(Account, Agent):
 			settings['params'].update(data)
 		else:
 			settings['params']=data
-		follows_set=set()
+		follows_list=[]
 		stop=False
 		
 		while not stop:
@@ -583,7 +583,7 @@ class AgentAccount(Account, Agent):
 					a.is_verified=edge['node']['is_verified']
 					a.full_name=edge['node']['full_name']
 					account.follows.add(a)
-					follows_set.add(a)
+					follows_list.append(a)
 				# Recursive calling method if not all elements was loading
 				if len(data['edges'])<count and data['page_info']['has_next_page']:
 					count=count-len(data['edges'])
@@ -592,7 +592,7 @@ class AgentAccount(Account, Agent):
 					stop=True
 			except (ValueError, KeyError):
 				raise UnexpectedResponse(response.url, response.text)
-		return follows_set
+		return follows_list
 	
 	@Agent.exceptionDecorator
 	def getFollowers(self, account=None, count=20, settings={}):
@@ -614,7 +614,7 @@ class AgentAccount(Account, Agent):
 			settings['params'].update(data)
 		else:
 			settings['params']=data
-		followers_set=set()
+		followers_list=[]
 		stop=False
 		
 		while not stop:
@@ -635,7 +635,7 @@ class AgentAccount(Account, Agent):
 					a.is_verified=edge['node']['is_verified']
 					a.full_name=edge['node']['full_name']
 					account.followers.add(a)
-					followers_set.add(a)
+					followers_list.append(a)
 				# Recursive calling method if not all elements was loading
 				if len(data['edges'])<count and data['page_info']['has_next_page']:
 					count=count-len(data['edges'])
@@ -644,7 +644,7 @@ class AgentAccount(Account, Agent):
 					stop=True
 			except (ValueError, KeyError):
 				raise UnexpectedResponse(response.url, response.text)
-		return followers_set
+		return followers_list
 	
 	@Agent.exceptionDecorator
 	def like(self, media, settings={}):

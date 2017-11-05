@@ -307,7 +307,7 @@ class Agent:
 				media.comments_count=data['count']
 				for edge in data['edges']:
 					comment=Comment(
-						id=edge['node']['id'],
+						edge['node']['id'],
 						media=media,
 						owner=Account(edge['node']['owner']['username']),
 						text=edge['node']['text'],
@@ -845,7 +845,7 @@ class Media(metaclass=ElementConstructor):
 	
 	def __init__(self, code):
 		self.id=None
-		self.code=code
+		self.code=str(code)
 		self.caption=None
 		self.owner=None
 		self.date=None
@@ -888,7 +888,7 @@ class Location(metaclass=ElementConstructor):
 	__primarykey__="id"
 	
 	def __init__(self, id):
-		self.id=id
+		self.id=str(id)
 		self.slug=None
 		self.name=None
 		self.has_public_page=None
@@ -917,7 +917,7 @@ class Tag(metaclass=ElementConstructor):
 	__primarykey__="name"
 	
 	def __init__(self, name):
-		self.name=name
+		self.name=str(name)
 		self.media_count=None
 		# Lists
 		self.media=set()
@@ -935,7 +935,7 @@ class Comment(metaclass=ElementConstructor):
 	__primarykey__="id"
 	
 	def __init__(self, id, media, owner, text, data):
-		self.id=int(id)
+		self.id=str(id)
 		self.media=media
 		self.owner=owner
 		self.text=text

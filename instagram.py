@@ -155,44 +155,44 @@ class Agent:
             raise TypeError("'settings' must be dict type")
         if not isinstance(count, int):
             raise TypeError("'count' must be int type")
+        
         if isinstance(obj, Account):
             if obj.id==None:
                 raise NotUpdatedElement(obj, 'id')
-            data={'query_id': 17888483320059182, 'variables': '{"id": '+str(obj.id)+', "first": '+str(count)+'}'}
+            query="https://www.instagram.com/{0}/?__a=1".format(obj.login)
         elif isinstance(obj, Location):
             if obj.id==None:
                 raise NotUpdatedElement(obj, 'id')
-            data={'query_id': 17865274345132052, 'variables': '{"id": '+str(obj.id)+', "first": '+str(count)+'}'}
+            query="https://www.instagram.com/explore/locations/{0}/?__a=1".format(obj.id)
         elif isinstance(obj, Tag):
             if obj.name==None:
                 raise NotUpdatedElement(obj, 'name')
-            data={'query_id': 17875800862117404, 'variables': '{"tag_name": "'+obj.name+'", "first": '+str(count)+'}'}
+            query="https://www.instagram.com/explore/tags/{0}/?__a=1".format(obj.name)
         else:
             raise TypeError("'obj' must be Account type")
         
-        # Set data
-        if 'params' in settings:
-            settings['params'].update(data)
-        else:
-            settings['params']=data
         media_list=[]
         stop=False
         
         while not stop:
             # Send request
             response=self.__send_get_request__(
-                "https://www.instagram.com/graphql/query/",
+                query,
                 **settings,
             )
             
             # Parsing info
             try:
+                try:
+                    data=response.json()['data']
+                except KeyError:
+                    data=response.json()['graphql']
                 if isinstance(obj, Account):
-                    data=response.json()['data']['user']['edge_owner_to_timeline_media']
+                    data=data['user']['edge_owner_to_timeline_media']
                 elif isinstance(obj, Location):
-                    data=response.json()['data']['location']['edge_location_to_media']
+                    data=data['location']['edge_location_to_media']
                 elif isinstance(obj, Tag):
-                    data=response.json()['data']['hashtag']['edge_hashtag_to_media']
+                    data=data['hashtag']['edge_hashtag_to_media']
                 for media in data['edges']:
                     m=Media(media['node']['shortcode'])
                     m.id=media['node']['id']
@@ -224,6 +224,7 @@ class Agent:
                         settings['params']['variables']='{"id": '+str(obj.id)+', "first": '+str(count)+', "after": "'+data['page_info']['end_cursor']+'"}'
                 else:
                     stop=True
+                query="https://www.instagram.com/graphql/query/"
             except (ValueError, KeyError):
                 raise UnexpectedResponse(response.url, response.text)
         return media_list

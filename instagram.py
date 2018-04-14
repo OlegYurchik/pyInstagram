@@ -1,7 +1,12 @@
 #!/usr/bin/python3
 
+import json
+
+import re
+
 import requests
 from requests.exceptions import *
+
 from time import sleep  
     
 # Exception classes
@@ -92,8 +97,8 @@ class ElementConstructor(type):
     
     def __call__(cls, key, *args, **kwargs):
         if not key in cls.__cache__:
-            cls.__cache__[key]=super().__call__(key, *args, **kwargs)
-        return cls.__cache__[key]
+            cls.__cache__[str(key)]=super().__call__(str(key), *args, **kwargs)
+        return cls.__cache__[str(key)]
 
 class Agent:
     # Anonymous session
@@ -128,14 +133,15 @@ class Agent:
         # Checks and set data
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
+        
         if isinstance(obj, Account):
-            query="https://www.instagram.com/{0}/?__a=1".format(obj.login)
+            query="https://www.instagram.com/{0}".format(obj.login)
         elif isinstance(obj, Media):
-            query="https://www.instagram.com/p/{0}?__a=1".format(obj.code)
+            query="https://www.instagram.com/p/{0}".format(obj.code)
         elif isinstance(obj, Location):
-            query="https://www.instagram.com/explore/locations/{0}/?__a=1".format(obj.id)
+            query="https://www.instagram.com/explore/locations/{0}".format(obj.id)
         elif isinstance(obj, Tag):
-            query="https://www.instagram.com/explore/tags/{0}/?__a=1".format(obj.name)
+            query="https://www.instagram.com/explore/tags/{0}".format(obj.name)
         else:
             raise TypeError("obj must be Account, Media, Location or Tag")
         
@@ -144,7 +150,12 @@ class Agent:
         
         # Parsing info
         try:
-            obj.__setDataFromJSON__(response.json())
+            match=re.search(
+                r"<script[^>]*>\s*window._sharedData\s*=\s*((?!<script>).*)\s*;\s*</script>",
+                response.text,
+            )
+            if match:
+                obj.__setDataFromJSON__(json.loads(match.group(1)))
         except (ValueError, KeyError):
             raise UnexpectedResponse(response.url, response.text)           
     
@@ -155,44 +166,44 @@ class Agent:
             raise TypeError("'settings' must be dict type")
         if not isinstance(count, int):
             raise TypeError("'count' must be int type")
-        
         if isinstance(obj, Account):
             if obj.id==None:
                 raise NotUpdatedElement(obj, 'id')
-            query="https://www.instagram.com/{0}/?__a=1".format(obj.login)
+            data={'query_id': 17888483320059182, 'variables': '{"id": '+str(obj.id)+', "first": '+str(count)+'}'}
         elif isinstance(obj, Location):
             if obj.id==None:
                 raise NotUpdatedElement(obj, 'id')
-            query="https://www.instagram.com/explore/locations/{0}/?__a=1".format(obj.id)
+            data={'query_id': 17865274345132052, 'variables': '{"id": '+str(obj.id)+', "first": '+str(count)+'}'}
         elif isinstance(obj, Tag):
             if obj.name==None:
                 raise NotUpdatedElement(obj, 'name')
-            query="https://www.instagram.com/explore/tags/{0}/?__a=1".format(obj.name)
+            data={'query_id': 17875800862117404, 'variables': '{"tag_name": "'+obj.name+'", "first": '+str(count)+'}'}
         else:
             raise TypeError("'obj' must be Account type")
         
+        # Set data
+        if 'params' in settings:
+            settings['params'].update(data)
+        else:
+            settings['params']=data
         media_list=[]
         stop=False
         
         while not stop:
             # Send request
             response=self.__send_get_request__(
-                query,
+                "https://www.instagram.com/graphql/query/",
                 **settings,
             )
             
             # Parsing info
             try:
-                try:
-                    data=response.json()['data']
-                except KeyError:
-                    data=response.json()['graphql']
                 if isinstance(obj, Account):
-                    data=data['user']['edge_owner_to_timeline_media']
+                    data=response.json()['data']['user']['edge_owner_to_timeline_media']
                 elif isinstance(obj, Location):
-                    data=data['location']['edge_location_to_media']
+                    data=response.json()['data']['location']['edge_location_to_media']
                 elif isinstance(obj, Tag):
-                    data=data['hashtag']['edge_hashtag_to_media']
+                    data=response.json()['data']['hashtag']['edge_hashtag_to_media']
                 for media in data['edges']:
                     m=Media(media['node']['shortcode'])
                     m.id=media['node']['id']
@@ -224,7 +235,6 @@ class Agent:
                         settings['params']['variables']='{"id": '+str(obj.id)+', "first": '+str(count)+', "after": "'+data['page_info']['end_cursor']+'"}'
                 else:
                     stop=True
-                query="https://www.instagram.com/graphql/query/"
             except (ValueError, KeyError):
                 raise UnexpectedResponse(response.url, response.text)
         return media_list
@@ -378,7 +388,7 @@ class Account(metaclass=ElementConstructor):
         self.followers=set()
 
     def __setDataFromJSON__(self, data):
-        data=data['graphql']['user']
+        data=data['entry_data']['ProfilePage'][0]['graphql']['user']
         self.id=data['id']
         self.full_name=data['full_name']
         self.profile_pic_url=data['profile_pic_url']
@@ -538,10 +548,86 @@ class AgentAccount(Account, Agent):
                 raise UnexpectedResponse(response.url, response.text)
         return feed
     
-    def getMedia(self, obj=None, count=12, settings={}):
-        if not obj:
-            obj=self
-        return super().getMedia(obj, count, settings)
+    @Agent.exceptionDecorator
+    def getMedia(self, obj, count=12, settings={}):
+        # Checks data
+        if not isinstance(settings, dict):
+            raise TypeError("'settings' must be dict type")
+        if not isinstance(count, int):
+            raise TypeError("'count' must be int type")
+        
+        if isinstance(obj, Account):
+            if obj.id==None:
+                raise NotUpdatedElement(obj, 'id')
+            query="https://www.instagram.com/{0}/?__a=1".format(obj.login)
+        elif isinstance(obj, Location):
+            if obj.id==None:
+                raise NotUpdatedElement(obj, 'id')
+            query="https://www.instagram.com/explore/locations/{0}/?__a=1".format(obj.id)
+        elif isinstance(obj, Tag):
+            if obj.name==None:
+                raise NotUpdatedElement(obj, 'name')
+            query="https://www.instagram.com/explore/tags/{0}/?__a=1".format(obj.name)
+        else:
+            raise TypeError("'obj' must be Account type")
+        
+        media_list=[]
+        stop=False
+        
+        while not stop:
+            # Send request
+            response=self.__send_get_request__(
+                query,
+                **settings,
+            )
+            
+            # Parsing info
+            try:
+                try:
+                    data=response.json()['data']
+                except KeyError:
+                    data=response.json()['graphql']
+                if isinstance(obj, Account):
+                    data=data['user']['edge_owner_to_timeline_media']
+                elif isinstance(obj, Location):
+                    data=data['location']['edge_location_to_media']
+                elif isinstance(obj, Tag):
+                    data=data['hashtag']['edge_hashtag_to_media']
+                for media in data['edges']:
+                    m=Media(media['node']['shortcode'])
+                    m.id=media['node']['id']
+                    if media['node']['edge_media_to_caption']['edges']:
+                        m.caption=media['node']['edge_media_to_caption']['edges'][0]['node']['text']
+                    if isinstance(obj, Account):
+                        m.owner=obj
+                    m.date=media['node']['taken_at_timestamp']
+                    if 'location' in media['node']:
+                        m.location=Location(media['node']['location']['id'])
+                    if isinstance(obj, Location):
+                        m.location=obj
+                    if isinstance(obj, Account):
+                        m.likes_count=media['node']['edge_media_preview_like']['count']
+                    else:
+                        m.likes_count=media['node']['edge_liked_by']
+                    m.comments_count=media['node']['edge_media_to_comment']['count']
+                    m.comments_disabled=media['node']['comments_disabled']
+                    m.is_video=media['node']['is_video']
+                    m.display_url=media['node']['display_url']
+                    m.dimensions=(media['node']['dimensions']['width'], media['node']['dimensions']['height'])
+                    obj.media.add(m)
+                    media_list.append(m)
+                if len(data['edges'])<count and data['page_info']['has_next_page']:
+                    count=count-len(data['edges'])
+                    if isinstance(obj, Tag):
+                        settings['params']['variables']='{"tag_name": "'+obj.name+'", "first": 12, "after": "'+data['page_info']['end_cursor']+'"}'
+                    else:
+                        settings['params']['variables']='{"id": '+str(obj.id)+', "first": 12, "after": "'+data['page_info']['end_cursor']+'"}'
+                else:
+                    stop=True
+                query="https://www.instagram.com/graphql/query/"
+            except (ValueError, KeyError):
+                raise UnexpectedResponse(response.url, response.text)
+        return media_list
     
     @Agent.exceptionDecorator
     def getFollows(self, account=None, count=20, settings={}):
@@ -846,7 +932,7 @@ class Media(metaclass=ElementConstructor):
     
     def __init__(self, code):
         self.id=None
-        self.code=str(code)
+        self.code=code
         self.caption=None
         self.owner=None
         self.date=None
@@ -864,7 +950,7 @@ class Media(metaclass=ElementConstructor):
         self.comments=set()
 
     def __setDataFromJSON__(self, data):
-        data=data['graphql']['shortcode_media']
+        data=data['entry_data']['PostPage'][0]['graphql']['shortcode_media']
         self.id=data['id']
         self.code=data['shortcode']
         if data['edge_media_to_caption']['edges']:
@@ -889,7 +975,7 @@ class Location(metaclass=ElementConstructor):
     __primarykey__="id"
     
     def __init__(self, id):
-        self.id=str(id)
+        self.id=id
         self.slug=None
         self.name=None
         self.has_public_page=None
@@ -901,7 +987,7 @@ class Location(metaclass=ElementConstructor):
         self.top_posts=set()
     
     def __setDataFromJSON__(self, data):
-        data=data['location']
+        data=data['entry_data']['LocationsPage'][0]['graphql']['location']
         self.id=data['id']
         self.slug=data['slug']
         self.name=data['name']
@@ -909,34 +995,34 @@ class Location(metaclass=ElementConstructor):
         if 'directory' in data:
             self.directory=data['directory']
         self.coordinates=(data['lat'], data['lng'])
-        self.media_count=data['media']['count']
-        for node in data['top_posts']['nodes']:
-            self.top_posts.add(Media(node['code']))
+        self.media_count=data['edge_location_to_media']['count']
+        for node in data['edge_location_to_top_posts']['edges']:
+            self.top_posts.add(Media(node['node']['shortcode']))
 
 class Tag(metaclass=ElementConstructor):
     __cache__={}
     __primarykey__="name"
     
     def __init__(self, name):
-        self.name=str(name)
+        self.name=name
         self.media_count=None
         # Lists
         self.media=set()
         self.top_posts=set()
     
     def __setDataFromJSON__(self, data):
-        data=data['tag']
+        data=data['entry_data']['TagPage'][0]['graphql']['hashtag']
         self.name=data['name']
-        self.media_count=data['media']['count']
-        for node in data['top_posts']['nodes']:
-            self.top_posts.add(Media(node['code']))
+        self.media_count=data['edge_hashtag_to_media']['count']
+        for node in data['edge_hashtag_to_top_posts']['edges']:
+            self.top_posts.add(Media(node['node']['shortcode']))
 
 class Comment(metaclass=ElementConstructor):
     __cache__={}
     __primarykey__="id"
     
     def __init__(self, id, media, owner, text, data):
-        self.id=str(id)
+        self.id=id
         self.media=media
         self.owner=owner
         self.text=text

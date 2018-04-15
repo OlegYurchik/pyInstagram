@@ -6,7 +6,8 @@ import re
 import requests
 from requests.exceptions import *
 from time import sleep  
-    
+#from urllib.parse import urlencode
+
 # Exception classes
 class InstagramException(Exception):
     pass
@@ -102,7 +103,7 @@ class ElementConstructor(type):
 
 class Agent:
     # Anonymous session
-    __session__=requests
+    __session__=requests.Session()
     repeats=1
     
     def exceptionDecorator(func):
@@ -231,13 +232,12 @@ class Agent:
                 data['name']='id'
                 data['name_value']=obj.id
             settings['params']['variables']='{{"{name}":"{name_value}","first":{first},"after":"{after}"}}'.format(**data)
-            
+            # Set GIS header
             settings['headers']={
                 'X-Instagram-GIS': hashlib.md5('{0}:{1}:{2}'.format(
                         self.rhx_gis,
                         self.csrf_token,
-                        #"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36",
-                        settings['params'],
+                        settings['params']['variables'],
                     ).encode('utf-8'),
                 ).hexdigest(),
             }

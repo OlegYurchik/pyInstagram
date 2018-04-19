@@ -334,6 +334,7 @@ class Agent:
         
         data=self.__update__(media, settings)
         comments_list=[]
+        stop=False
         
         if not after:
             try:
@@ -394,11 +395,11 @@ class Agent:
                 for comment in data['edges']:
                     comment=comment['node']
                     c=Comment(
-                        id=comment['id'],
+                        comment['id'],
                         media=media,
                         owner=Account(comment['owner']['username']),
                         text=comment['text'],
-                        data=comment['created_at'],
+                        created_at=comment['created_at'],
                     )
                     media.comments.add(c)
                     comments_list.append(c)
@@ -484,6 +485,7 @@ class AgentAccount(Account, Agent):
     @Agent.exceptionDecorator
     def __init__(self, login, password, settings={}):
         super().__init__(login)
+        #super(Agent, self).__init__()
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
         # Request for get start page for get CSRFToken
@@ -558,7 +560,6 @@ class AgentAccount(Account, Agent):
             data={}
             if after:
                 data['after']=after
-                    
             if limit<count:
                 data['first']=limit
             else:
@@ -566,6 +567,14 @@ class AgentAccount(Account, Agent):
             data['shortcode']=media.code
             settings['params']['variables']=\
                 settings['params']['variables'].format(**data)
+            settings['headers']={
+                'X-Instagram-GIS': hashlib.md5('{0}:{1}'.format(
+                        self.rhx_gis,
+                        settings['params']['variables'],
+                    ).encode('utf-8'),
+                ).hexdigest(),
+            }
+            
             
             # Request for get info
             response=self.__send_get_request__(
@@ -639,6 +648,14 @@ class AgentAccount(Account, Agent):
             data['id']=account.id
             settings['params']['variables']=\
                 settings['params']['variables'].format(**data)
+            # Set GIS header
+            settings['headers']={
+                'X-Instagram-GIS': hashlib.md5('{0}:{1}'.format(
+                        self.rhx_gis,
+                        settings['params']['variables'],
+                    ).encode('utf-8'),
+                ).hexdigest(),
+            }
             
             # Request for get info
             response=self.__send_get_request__(
@@ -713,6 +730,14 @@ class AgentAccount(Account, Agent):
             data['id']=account.id
             settings['params']['variables']=\
                 settings['params']['variables'].format(**data)
+            # Set GIS header
+            settings['headers']={
+                'X-Instagram-GIS': hashlib.md5('{0}:{1}'.format(
+                        self.rhx_gis,
+                        settings['params']['variables'],
+                    ).encode('utf-8'),
+                ).hexdigest(),
+            }
             
             # Request for get info
             response=self.__send_get_request__(
@@ -777,6 +802,14 @@ class AgentAccount(Account, Agent):
                 settings['params']['variables']='{{"fetch_media_item_count":{first},"fetch_media_item_cursor":"{after}","fetch_comment_count":4,"fetch_like":10,"has_stories":false}}'.format(**data)
             else:
                 settings['params']['variables']='{}'
+            # Set GIS header
+            settings['headers']={
+                'X-Instagram-GIS': hashlib.md5('{0}:{1}'.format(
+                        self.rhx_gis,
+                        settings['params']['variables'],
+                    ).encode('utf-8'),
+                ).hexdigest(),
+            }
             
             # Send request
             response=self.__send_get_request__(
@@ -879,11 +912,11 @@ class AgentAccount(Account, Agent):
             data=response.json()
             if data['status']=='ok':
                 comment=Comment(
-                    id=data['id'],
+                    data['id'],
                     media=media,
                     owner=self,
                     text=data['text'],
-                    data=data['created_time'],
+                    created_at=data['created_time'],
                 )
                 return comment
             return None

@@ -103,9 +103,6 @@ class ElementConstructor(type):
         return cls.__cache__[str(key)]
 
 class Agent:
-    repeats=1
-    __session__=requests.Session()
-    
     def exceptionDecorator(func):
         def wrapper(self, *args, **kwargs):
             count=0
@@ -114,7 +111,7 @@ class Agent:
                 try:
                     return func(self, *args, **kwargs)
                 except Exception as e:
-                    if count<Agent.repeats:
+                    if count<self.repeats:
                         args, kwargs=self.exception_actions[e.__class__](e, *args, **kwargs)
                     else:
                         raise e
@@ -129,12 +126,13 @@ class Agent:
     exception_actions=ExceptionTree()
     exception_actions[HTTPError]=__http_error_action__
     
-    def __init__(self):
+    def __init__(self, settings={}):
         self.__session__=requests.Session()
         self.repeats=1
+        self.update(settings=settings)
     
     @exceptionDecorator
-    def __update__(self, obj, settings={}):
+    def update(self, obj=None, settings={}):
         # Checks and set data
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
@@ -147,8 +145,10 @@ class Agent:
             query="https://www.instagram.com/explore/locations/{0}".format(obj.id)
         elif isinstance(obj, Tag):
             query="https://www.instagram.com/explore/tags/{0}".format(obj.name)
+        elif obj is None:
+            query="https://www.instagram.com"
         else:
-            raise TypeError("obj must be Account, Media, Location or Tag")
+            raise TypeError("obj must be Account, Media, Location, Tag or None")
         
         # Request
         response=self.__send_get_request__(query, **settings)
@@ -173,6 +173,8 @@ class Agent:
                 data=data['LocationsPage'][0]['graphql']['location']
             elif isinstance(obj, Tag):
                 data=data['TagPage'][0]['graphql']['hashtag']
+            elif obj is None:
+                return None
             obj.__setDataFromJSON__(data)
             return data
         except (AttributeError, KeyError, ValueError):
@@ -189,7 +191,7 @@ class Agent:
         if not isinstance(limit, int):
             raise TypeError("'limit' must be int type")
         
-        data=self.__update__(obj, settings)
+        data=self.update(obj, settings)
         media_list=[]
         stop=False
         
@@ -298,7 +300,7 @@ class Agent:
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
         
-        data=self.__update__(media, settings)
+        data=self.update(media, settings)
         likes_list=[]
         # Parse first request
         try:
@@ -331,7 +333,7 @@ class Agent:
         if not isinstance(limit, int):
             raise TypeError("'limit' must be int type")
         
-        data=self.__update__(media, settings)
+        data=self.update(media, settings)
         comments_list=[]
         stop=False
         
@@ -483,15 +485,13 @@ class Account(metaclass=ElementConstructor):
 class AgentAccount(Account, Agent):
     @Agent.exceptionDecorator
     def __init__(self, login, password, settings={}):
-        super().__init__(login)
-        #super(Agent, self).__init__()
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
-        # Request for get start page for get CSRFToken
-        response=self.__send_get_request__(
-            "https://www.instagram.com/",
-            **settings
-        )
+    
+        Account.__init__(self, login)
+        Agent.__init__(self, settings=settings)
+        
+        
         # Create login data structure
         data={
             "username": self.login,
@@ -499,7 +499,7 @@ class AgentAccount(Account, Agent):
         }
         # Create headers
         headers={
-            "X-CSRFToken": response.cookies["csrftoken"],
+            "X-CSRFToken": self.csrf_token,
             "referer": "https://www.instagram.com/",
         }
         # Login request
@@ -519,10 +519,10 @@ class AgentAccount(Account, Agent):
             raise UnexpectedResponse(response.url, response.text)
     
     @Agent.exceptionDecorator
-    def __update__(self, obj=None, settings={}):
+    def update(self, obj=None, settings={}):
         if not obj:
             obj=self
-        return super().__update__(obj, settings)
+        return super().update(obj, settings)
     
     @Agent.exceptionDecorator
     def getMedia(self, obj, after=None, count=12, settings={},
@@ -543,7 +543,7 @@ class AgentAccount(Account, Agent):
             raise TypeError("'limit' must be int type")
         
         # Update media
-        self.__update__(media, settings)
+        self.update(media, settings)
         likes_list=[]
         stop=False
         
@@ -819,15 +819,17 @@ class AgentAccount(Account, Agent):
             # Parsing info
             try:
                 data=response.json()['data']['user']['edge_web_feed_timeline']
+                length=len(data['edges'])
                 for media in data['edges']:
                     media=media['node']
                     if not 'shortcode' in media:
+                        length-=1
                         continue
                     m=Media(media['shortcode'])
                     m.__setDataFromJSON__(media)
                     feed.append(m)
-                if len(data['edges'])<count and data['page_info']['has_next_page']:
-                    count=count-len(data['edges'])
+                if length<count and data['page_info']['has_next_page']:
+                    count=count-length
                 else:
                     stop=True
                 if data['page_info']['has_next_page']:

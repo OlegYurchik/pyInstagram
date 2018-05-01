@@ -20,6 +20,7 @@ class InternetException(InstagramException):
         return self.error.__getattribute__(name)
     
     def __str__(self):
+        print(self.error.response.text)
         return "Error by connection with Instagram to '{0}' with response code '{1}'".format(self.error.request.url, self.error.response.status_code)
     
 class AuthException(Exception):
@@ -179,7 +180,7 @@ class Agent:
     
     @exceptionDecorator
     def getMedia(self, obj, after=None, count=12, settings={},
-        limit=12):
+        limit=50):
         # Check data
         if not isinstance(count, int):
             raise TypeError("'count' must be int type")
@@ -253,13 +254,11 @@ class Agent:
                     ).encode('utf-8'),
                 ).hexdigest(),
             }
-            
             # Send request
             response=self.__send_get_request__(
                 "https://www.instagram.com/graphql/query/",
                 **settings,
             )
-            
             # Parsing info
             try:
                 if isinstance(obj, Account):
@@ -321,7 +320,7 @@ class Agent:
     
     @exceptionDecorator
     def getComments(self, media, after=None, count=35, settings={},
-        limit=1000):
+        limit=50):
         # Check data
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
@@ -527,12 +526,12 @@ class AgentAccount(Account, Agent):
     
     @Agent.exceptionDecorator
     def getMedia(self, obj, after=None, count=12, settings={},
-        limit=1000):
+        limit=12):
         return super().getMedia(obj, after, count, settings, limit)
     
     @Agent.exceptionDecorator
     def getLikes(self, media, after=None, count=20, settings={},
-        limit=1000):
+        limit=50):
         # Check data
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
@@ -611,7 +610,7 @@ class AgentAccount(Account, Agent):
     
     @Agent.exceptionDecorator
     def getFollows(self, account=None, after=None, count=20, settings={},
-        limit=1000):
+        limit=50):
         # Check set and data
         if not account:
             account=self
@@ -693,7 +692,7 @@ class AgentAccount(Account, Agent):
     
     @Agent.exceptionDecorator
     def getFollowers(self, account=None, after=None, count=20,
-        settings={}, limit=1000):
+        settings={}, limit=50):
         # Check set and data
         if not account:
             account=self
@@ -773,7 +772,7 @@ class AgentAccount(Account, Agent):
         return followers_list, after
     
     @Agent.exceptionDecorator
-    def feed(self, after=None, count=12, settings={}, limit=1000):
+    def feed(self, after=None, count=12, settings={}, limit=50):
         # Check set and data
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")

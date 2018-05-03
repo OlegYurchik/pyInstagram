@@ -233,6 +233,9 @@ class Agent:
             settings['params']={
                 'query_hash': "42323d64886122307be10013ad2dcc44",
             }
+        else:
+            settings['params']['query_hash']=\
+                "42323d64886122307be10013ad2dcc44"
         
         while not stop:
             # Set params
@@ -364,6 +367,9 @@ class Agent:
             settings['params']={
                 'query_hash': "33ba35852cb50da46f5b5e889df7d159",
             }
+        else:
+            settings['params']['query_hash']=\
+                "33ba35852cb50da46f5b5e889df7d159"
         
         while not stop:
             # Set params
@@ -498,15 +504,18 @@ class AgentAccount(Account, Agent):
             "password": password,
         }
         # Create headers
-        headers={
-            "X-CSRFToken": self.csrf_token,
-            "referer": "https://www.instagram.com/",
-        }
+        if 'headers' in settings:
+            settings['headers']['X-CSRFToken']=self.csrf_token
+            settings['headers']['referer']="https://www.instagram.com/"
+        else:
+            settings['headers']={
+                "X-CSRFToken": self.csrf_token,
+                "referer": "https://www.instagram.com/",
+            }
         # Login request
         response=self.__send_post_request__(
             "https://www.instagram.com/accounts/login/ajax/",
             data=data,
-            headers=headers,
             **settings,
         )
         
@@ -549,11 +558,19 @@ class AgentAccount(Account, Agent):
         
         # Set data
         # Set params
-        if not 'params' in settings:
+        if 'params' in settings:
+            settings['params']['query_hash']=\
+                "1cb6ec562846122743b61e492c85999f"
+        else:
             settings['params']={
                 'query_hash': "1cb6ec562846122743b61e492c85999f",
-                'variables': '{{"shortcode":"{shortcode}","first":{first}}}',
             }
+        if after:
+            settings['params']['variables']=\
+                '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
+        else:
+            settings['params']['variables']=\
+                '{{"shortcode":"{shortcode}","first":{first}}}'
         
         while not stop:
             data={}
@@ -624,7 +641,7 @@ class AgentAccount(Account, Agent):
             raise TypeError("'limit' must be int type")
         
         # Update account
-        self.__update__(account, settings)
+        self.update(account, settings)
         follows_list=[]
         stop=False
         
@@ -633,8 +650,16 @@ class AgentAccount(Account, Agent):
         if not 'params' in settings:
             settings['params']={
                 'query_hash': "58712303d941c6855d4e888c5f0cd22f",
-                'variables': '{{"id":"{id}","first":{first}}}',
             }
+        else:
+            settings['params']['query_hash']=\
+                "58712303d941c6855d4e888c5f0cd22f"
+        if after:
+            settings['params']['variables']=\
+                '{{"id":"{id}","first":{first},"after":"{after}"}}'
+        else:
+            settings['params']['variables']=\
+                '{{"id":"{id}","first":{first}}}'
         
         while not stop:
             data={}
@@ -645,6 +670,7 @@ class AgentAccount(Account, Agent):
             else:
                 data['first']=count
             data['id']=account.id
+            print(settings['params']['variables'])
             settings['params']['variables']=\
                 settings['params']['variables'].format(**data)
             # Set GIS header
@@ -706,17 +732,25 @@ class AgentAccount(Account, Agent):
             raise TypeError("'limit' must be int type")
         
         # Update account
-        self.__update__(account, settings)
+        self.update(account, settings)
         followers_list=[]
         stop=False
         
         # Set data
         # Set params
-        if not 'params' in settings:
+        if 'params' in settings:
+            settings['params']['query_hash']=\
+                "37479f2b8209594dde7facb0d904896a"
+        else:
             settings['params']={
                 'query_hash': "37479f2b8209594dde7facb0d904896a",
-                'variables': '{{"id":"{id}","first":{first}}}',
             }
+        if after:
+            settings['params']['variables']=\
+                '{{"id":"{id}","first":{first},"after":"{after}"}}'
+        else:
+            settings['params']['variables']=\
+                '{{"id":"{id}","first":{first}}}'
         
         while not stop:
             data={}
@@ -782,10 +816,11 @@ class AgentAccount(Account, Agent):
             raise TypeError("'limit' must be int type")
         
         # Set params
-        if not 'params' in settings:
+        if 'params' in settings:
+            settings['params']['query_hash']="485c25657308f08317c1e4b967356828"
+        else:
             settings['params']={
                 'query_hash': "485c25657308f08317c1e4b967356828",
-                'variables': '{}',
             }
         feed=[]
         stop=False

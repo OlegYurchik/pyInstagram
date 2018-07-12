@@ -3,3 +3,6 @@ re
 requests
 time
 hashlib
+distutils
+pytest
+pylint

@@ -1,3 +1,7 @@
+from time import sleep
+
+
+
 # Exceptions
 class InstagramException(Exception):
     pass

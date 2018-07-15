@@ -1,0 +1,86 @@
+name pip3
+
+check
+	if [ -z "$1" ]; then
+		return 1
+	fi
+	IFS="
+"
+	XG_name=""
+    XG_venvname=""
+    XG_venvdir=""
+	for XG_line in ${XG_TARGETS[$1]}
+	do
+		if [[ "$XG_line" =~ ^[[:blank:]]*# || "$XG_line" =~ ^[[:blank:]]*$ ]]; then
+            continue
+		elif [[ "$XG_line" =~ ^\ {4}name:[[:blank:]]*([[:alpha:]][[[:alnum:]]\-\.]+)$ ]]; then
+			XG_name=${BASH_REMATCH[1]}
+        elif [[ "$XG_line" =~ ^\ {4}venvname:[[:blank:]]*([^[[:blank:]]]*)$ ]]; then
+            XG_venvname=${BASH_REMATCH[1]}
+        elif [[ "$XG_line" =~ ^\ {4}venvdir:[[:blank:]]*([^[[:blank:]]]*)$ ]]; then
+            XG_venvdir=${BASH_REMATCH[1]}
+		elif ! [[ "$XG_line" =~ ^\ {4}version:[[:blank:]]*(==)?([[[:digit:]]\.]+)$ ]]; then
+			echo -e $XG_C_ERROR$XG_C_RED$XG_C_BOLD"Неверная инструкция '$XG_line' в пакете '$1'"$XG_C_END	
+			exit
+		fi
+	done
+	IFS=" "
+	if [ -n "$XG_venvname" ]; then
+		XG_result=$(source "$XG_venvdir/$XG_venvname/bin/activate" 2>&1)			
+		if [ -n "$XG_result" ]; then
+			echo -e $XG_C_ERROR$XG_C_RED$XG_C_BOLD"Не удалось запустить виртуальное окружение '$XG_venvname' из папки '$XG_venvdir'"$XG_C_END
+			return 1
+		fi
+		source "$XG_venvdir/$XG_venvname/bin/activate"
+	fi
+	if [ -n "$(pip3 list 2>/dev/null | sed -e "/^$XG_name/Ib" -e d)" ]; then
+		echo -e $XG_C_OK$XG_C_GREEN$XG_C_BOLD"'$name' (Python пакет) установлен"$XG_C_END		
+		return 0
+	fi
+	if [ -n "$XG_venvname" ]; then
+		deactivate	
+	fi
+	echo -e $XG_C_ERROR$XG_C_RED$XG_C_BOLD"'$XG_name' (Python пакет) не установлен"$XG_C_END
+	return 1
+endcheck
+
+action
+	IFS="
+"
+	XG_name=""
+	XG_equal=""
+	XG_version=""
+    XG_venvname=""
+    XG_venvdir=""
+	for XG_line in ${XG_TARGETS[$1]}
+	do
+		if [[ "$XG_line" =~ ^[[:blank:]]*# || "$XG_line" =~ ^[[:blank:]]*$ ]]; then
+            continue
+		elif [[ "$XG_line" =~ ^\ {4}name:[[:blank:]]*([[:alpha:]][[[:alnum:]]\.\+\-]+)$ ]]; then
+			XG_name=${BASH_REMATCH[1]}
+		elif [[ "$XG_line" =~ ^\ {4}version:[[:blank:]]*(==)?([[[:digit:]]\.]+)$ ]]; then
+			XG_equal=${BASH_REMATCH[1]}
+			XG_version=${BASH_REMATCH[2]}
+        elif [[ "$XG_line" =~ ^\ {4}venvname:[[:blank:]]*([^[[:blank:]]]*)$ ]]; then
+            XG_venvname=${BASH_REMATCH[1]}
+        elif [[ "$XG_line" =~ ^\ {4}venvdir:[[:blank:]]*([^[[:blank:]]]*)$ ]]; then
+            XG_venvdir=${BASH_REMATCH[1]}
+		else
+			echo -e $XG_C_ERROR$XG_C_RED$XG_C_BOLD"Неверная инструкция '$XG_line' в пакете '$1'"$XG_C_END
+			exit
+		fi
+	done
+	IFS=" "
+	if [ -n "$XG_venvname" ]; then
+		XG_result=$(source "$XG_venvdir/$XG_venvname/bin/activate" 2>&1)
+		if [ -n "$XG_result" ]; then
+			echo -e $XG_C_ERROR$XG_C_RED$XG_C_BOLD"Не удалось запустить виртуальное окружение '$XG_venvname' из папки '$XG_venvdir'"$XG_C_END
+			return 1	
+		fi
+		source "$XG_venvdir/$XG_venvname/bin/activate"
+	fi
+	pip3 install $XG_name$XG_equal$XG_version
+	if [ -n "$XG_venvname" ]; then
+		deactivate	
+	fi
+endaction

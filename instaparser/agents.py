@@ -346,7 +346,7 @@ class AgentAccount(Account, Agent):
 
     @exception_manager.decorator
     def get_media(self, obj, pointer=None, count=12, settings={}, limit=12):
-        return super().getMedia(obj, pointer, count, settings, limit)
+        return super().get_media(obj, pointer, count, settings, limit)
 
     @exception_manager.decorator
     def get_likes(self, media, pointer=None, count=20, settings={}, limit=50):
@@ -583,11 +583,8 @@ class AgentAccount(Account, Agent):
             raise TypeError("'limit' must be int type")
 
         query_hash = "485c25657308f08317c1e4b967356828"
-        if pointer is None:
-            variables_string = "{}"
-        else:
-            variables_string = '{{"fetch_media_item_count":{first},"fetch_media_item_cursor":"{after}",\
-                "fetch_comment_count":4,"fetch_like":10,"has_stories":false}}'
+        variables_string = '{{"fetch_media_item_count":{first},"fetch_media_item_cursor":"{after}",\
+            "fetch_comment_count":4,"fetch_like":10,"has_stories":false}}'
         feed = []
 
         if "params" in settings:
@@ -597,11 +594,11 @@ class AgentAccount(Account, Agent):
 
         while True:
             if pointer:
-                data = {"after": pointer, "first": min(limit, count)}
+                settings["params"]["variables"] = variables_string.format(after=pointer,
+                                                                          first=min(limit, count))
             else:
-                data = {}
+                settings["params"]["variables"]="{}"
             
-            settings["params"]["variables"] = variables_string.format(**data)
             if not "headers" in settings:
                 settings["headers"] = {
                     "X-Instagram-GIS": "%s:%s" % (self._rhx_gis, settings["params"]["variables"]),
@@ -622,11 +619,11 @@ class AgentAccount(Account, Agent):
                 
                 for index in range(min(length, count)):
                     node = edges[index]["node"]
-                    if not "shortcode" in media:
+                    if not "shortcode" in node:
                         length -= 1
                         continue
                     m = Media(node["shortcode"])
-                    m._set_data(media)
+                    m._set_data(node)
                     feed.append(m)
                 
                 if page_info["has_next_page"]:
@@ -649,7 +646,7 @@ class AgentAccount(Account, Agent):
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
         if media.id is None:
-            raise NotUpdatedElement(media, "id")
+            self.update(media)
 
         response = \
             self._action_request(referer="https://www.instagram.com/p/%s/" % media.code,
@@ -669,7 +666,7 @@ class AgentAccount(Account, Agent):
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
         if media.id is None:
-            raise NotUpdatedElement(media, "id")
+            self.update(media)
 
         response = \
             self._action_request(referer="https://www.instagram.com/p/%s/" % media.code,
@@ -691,7 +688,7 @@ class AgentAccount(Account, Agent):
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
         if media.id is None:
-            raise NotUpdatedElement(media, "id")
+            self.update(media)
 
         response = \
             self._action_request(referer="https://www.instagram.com/p/%s/" % media.code,
@@ -716,15 +713,13 @@ class AgentAccount(Account, Agent):
 
 
     @exception_manager.decorator
-    def deleteComment(self, comment, settings={}):
+    def delete_comment(self, comment, settings={}):
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
         if not isinstance(comment, Comment):
             raise TypeError("'comment' must be Comment type")
-        if comment.media is None:
-            raise NotUpdatedElement(comment, "media")
         if comment.media.id is None:
-            raise NotUpdatedElement(comment.media, "id")
+            self.update(comment.media)
 
         response = \
             self._action_request(referer="https://www.instagram.com/p/%s/" % comment.media.code,
@@ -749,7 +744,7 @@ class AgentAccount(Account, Agent):
         if not isinstance(account, Account):
             raise TypeError("'account' must be Account type")
         if account.id is None:
-            raise NotUpdatedElement(account, "id")
+            self.update(account)
 
         response = \
             self._action_request(referer="https://www.instagram.com/%s" % account.login,
@@ -769,7 +764,7 @@ class AgentAccount(Account, Agent):
         if not isinstance(account, Account):
             raise TypeError("'account' must be Account type")
         if account.id is None:
-            raise NotUpdatedElement(account, "id")
+            self.update(account)
 
         response = \
             self._action_request(referer="https://www.instagram.com/%s" % account.login,
@@ -795,7 +790,7 @@ class AgentAccount(Account, Agent):
         headers = {
             "referer": referer,
             "x-csrftoken": self._session.cookies["csrftoken"],
-            "x-instagram-ajax": 1,
+            "x-instagram-ajax": "1",
             "x-requested-with": "XMLHttpRequest",
         }
         if "headers" in settings:

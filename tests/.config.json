@@ -1,0 +1,24 @@
+{
+    "credentials": {
+        "login": "login",
+        "password": "password"
+    },
+    "accounts": [
+        "zuck"
+    ],
+    "photos": [
+        "BTcb3esjjVo"
+    ],
+    "photo_sets": [
+        "BZF0fbXj3zV"
+    ],
+    "videos": [
+        "BV76rluDGsC"
+    ],
+    "locations": [
+        251729389
+    ],
+    "tags": [
+        "instagram"
+    ]
+}

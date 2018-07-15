@@ -7,10 +7,13 @@ setup(
     
     author = "Oleg Yurchik",
     author_email = "oleg.yurchik@protonmail.com",
+    url = "https://github.com/OlegYurchik/InstaParser",
     
     description = "",
     long_description = open(join(dirname(__file__), 'README.md')).read(),
     
     packages = find_packages(),
-    install_requires = [],
+    install_requires = ["requests"],
+    
+    test_suite = "tests/",
 )

@@ -19,7 +19,7 @@ class ElementConstructor(type):
         return super().__new__(mcs, name, classes, fields)
 
     def __call__(cls, key, *args, **kwargs):
-        if not key in cls._cache:
+        if not str(key) in cls._cache:
             cls._cache[str(key)] = super().__call__(str(key), *args, **kwargs)
 
         return cls._cache[str(key)]

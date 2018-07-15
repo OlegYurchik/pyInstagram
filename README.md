@@ -246,31 +246,45 @@ What anonymous agent can do?
 * update(self, obj=None, settings={})
 
 This method updates the information about the transferred entity
+
 obj - entity for updating (Account, Media, Location, Tag)
+
 settings - dict with settings for connection
 
 * get_media(self, obj, pointer=None, count=12, settings={}, limit=50)
 
 This metod return list of entity media and pointer for next page with medias
+
 obj - entity (Account, Location, Tag)
+
 pointer - pointer for next page with medias
+
 count - number of last media records
+
 settings - dict with settings for connection
+
 limit - limit of medias in one request
 
 * get_likes(self, media, settings={})
 
 This metod return list of media likes
+
 media - media entity
+
 settings - dict with settings for connection
 
 * get_comments(self, media, pointer=None, count=35, settings={}, limit=50)
 
 This metod return list of media comments and pointer for next page with comments
+
 media - media entity
+
 pointer - pointer for next page with comments
+
 count - number of last comments records
+
 settings - dict with settings for connection
+
 limit - limit of comments in one request
 
 ## Authorized agent
@@ -290,88 +304,127 @@ What authorized agent can do?
 * update(self, obj=None, settings={})
 
 This method updates the information about the transferred entity
+
 obj - entity for updating (Account, Media, Location, Tag)
+
 settings - dict with settings for connection
 
 * get_media(self, obj, pointer=None, count=12, settings={}, limit=12)
 
 This metod return list of entity media and pointer for next page with medias
+
 obj - entity (Account, Location, Tag)
+
 pointer - pointer for next page with medias
+
 count - number of last media records
+
 settings - dict with settings for connection
+
 limit - limit of medias in one request
 
 * get_likes(self, media, pointer=None, count=20, settings={}, limit=50)
 
 This metod return list of media likes and pointer for next page with likes
+
 media - media entity
+
 pointer - pointer for next page with likes
+
 count - number of last likes records
+
 settings - dict with settings for connection
+
 limit - limit of likes in one request
 
 * get_follows(self, account=None, pointer=None, count=20, settings={}, limit=50)
 
 This metod return list of account follows and pointer for next page with follows
+
 account - account entity
+
 pointer - pointer for next page with follows
+
 count - number of last follows records
+
 settings - dict with settings for connection
+
 limit - limit of follows in one request
 
 * get_followers(self, account=None, pointer=None, count=20, settings={}, limit=50)
 
 This metod return list of followers follows and pointer for next page with followers
+
 account - account entity
+
 pointer - pointer for next page with followers
+
 count - number of last followers records
+
 settings - dict with settings for connection
+
 limit - limit of followers in one request
 
 * feed(self, pointer=None, count=12, settings={}, limit=50)
 
 This metod return feed and pointer for next page
+
 pointer - pointer for next page
+
 count - number of last records
+
 settings - dict with settings for connection
+
 limit - limit of medias in one request
 
 * like(self, media, settings={})
 
 This method like media
+
 media - media entity
+
 settings - dict with settings for connection
 
 * unlike(self, media, settings={})
 
 This method unlike media
+
 media - media entity
+
 settings - dict with settings for connection
 
 * add_comment(self, media, text, settings={})
 
 This method create a comment under media
+
 media - media entity
+
 text - text for comment
+
 settings - dict with settings for connection
 
 * delete_comment(self, comment, settings={})
 
 This method delete a comment
+
 comment - comment for deleting
+
 settings - dict with settings for connection
 
 * follow(self, account, settings={})
 
 This method follow to user
+
 account - account for following
+
 settings - dict with settings for connection
 
 * unfollow(self, account, settings={})
 
 This method unfollow to user
+
 account - account for unfollowing
+
 settings - dict with settings for connection
 
 ## Examples

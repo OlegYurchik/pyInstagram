@@ -1,9 +1,12 @@
 # InstaParser
-[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/OlegYurchik/InstaParser/blob/master/LICENSE)
-[![built with Python3](https://img.shields.io/badge/built%20with-Python3-red.svg)](https://www.python.org/)
+[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](
+https://github.com/OlegYurchik/InstaParser/blob/master/LICENSE)
+[![built with Python3](https://img.shields.io/badge/built%20with-Python3-red.svg)](
+https://www.python.org/)
 
 ### Description
-This is a simple and easy-to-use library for interacting with the Instagram. The library works through the web interface of the Instagram and does not depend on the official API
+This is a simple and easy-to-use library for interacting with the Instagram. The library works
+through the web interface of the Instagram and does not depend on the official API
 
 [![paypal](https://img.shields.io/badge/-PayPal-blue.svg)](https://www.paypal.me)
 
@@ -24,14 +27,19 @@ User Guide
 * [Agents](#agents)
   * [Anonymous agent](#anonymous-agent)
   * [Authorized agent](#authorized-agent)
+* [Exception Handler](#exception-handler)
 * [Examples](#examples)
 * [Help the author](#help-the-author)
+  * [Test the library](#test-the-library)
+  * [Contribute repo](#contribute-repo)
+  * [Donate](#donate)
 
 ## Getting Started
 
 ## Basic Installation
 
-To basic installation you should have git, python3 (prefer python3.6 or later), pip (optionally) in your system
+To basic installation you should have git, python3 (prefer python3.6 or later), pip (optionally) in
+your system
 
 ```bash
 1. git clone https://github.com/olegyurchik/InstaParser.git
@@ -43,7 +51,8 @@ or
 
 ## Installation via Virtualenv
 
-To installation via Virtualenv, you should have git, python3 (prefer python3.6 or later), pip (optionally) and virtualenv in your system
+To installation via Virtualenv, you should have git, python3 (prefer python3.6 or later), pip
+(optionally) and virtualenv in your system
 
 ```bash
 1. git clone https://github.com/olegyurchik/InstaParser.git
@@ -57,7 +66,8 @@ or
 
 ## Installation by xGod
 
-xGod (https://github.com/OlegYurchik/xGod) is a convenient manager for managing the assembly, installation, and deployment of the environment. You can say that this is an extended make
+xGod (https://github.com/OlegYurchik/xGod) is a convenient manager for managing the assembly,
+installation, and deployment of the environment. You can say that this is an extended make
 
 ```bash
 1. git clone https://github.com/olegyurchik/InstaParser.git
@@ -65,11 +75,13 @@ xGod (https://github.com/OlegYurchik/xGod) is a convenient manager for managing 
 3. xgod/xgod build.xg install
 ```
 
-This action will automatically configure and install the package in a virtual environment. This is fine if you just want to test the library in your own code
+This action will automatically configure and install the package in a virtual environment. This is
+fine if you just want to test the library in your own code
 
 ## Quick Start
 
-After installation, you can use the library in your code. Below is a sneak example of using the library
+After installation, you can use the library in your code. Below is a sneak example of using the
+library
 
 ```python3
 from instaparser.agents import Agent
@@ -82,7 +94,8 @@ media1, pointer = agent.get_media(account)
 media2, pointer = agent.get_media(account, count=50, pointer=pointer)
 ```
 
-This code allows you to download brief information about the first media from Mark Zuckerberg's public page in the Instagram
+This code allows you to download brief information about the first media from Mark Zuckerberg's
+public page in the Instagram
 
 ## Entities
 
@@ -109,10 +122,12 @@ account = Account("zuck")
 media = Media("Bk09NSFn3IX")
 location = Location(4132822)
 tag = Tag("instagram")
-comment = Comment(id=17961800224030417, media=media, owner=account,  text="Nice pic Yaz...", created_at=1531512139)
+comment = Comment(id=17961800224030417, media=media, owner=account,  text="Nice pic Yaz...",
+created_at=1531512139)
 ```
 
-Do not be afraid to create entities with the same keys, so each key belongs to only one object and it can not be broken
+Do not be afraid to create entities with the same keys, so each key belongs to only one object and
+it can not be broken
 
 ```python3
 from instagram.entities import Account
@@ -209,7 +224,8 @@ The Tag object has the following fields:
 
 ## Comment
 
-To create an Comment entity as an argument, the constructor should pass the id, Media object, owner (Account object), text and created time in unix format
+To create an Comment entity as an argument, the constructor should pass the id, Media object, owner
+(Account object), text and created time in unix format
 
 ```python3
 tag = Tag("instagram")
@@ -224,14 +240,18 @@ The Tag object has the following fields:
 
 ## Agents
 
-An agent is an object that produces all actions with Instagram. The agent can be **anonymous** and **authorized**
+An agent is an object that produces all actions with Instagram. The agent can be **anonymous** and
+**authorized**
 
-Each method of agents can take a "setting" argument, which is a dictionary and contains the necessary settings for connecting to the Internet and instagram
-The dictionary with the settings is directly passed to the request method of the "requists" library, so it is necessary to specify the settings in the format in which their methods of "requests" are accepted
+Each method of agents can take a "setting" argument, which is a dictionary and contains the
+necessary settings for connecting to the Internet and instagram. The dictionary with the settings
+is directly passed to the request method of the "requists" library, so it is necessary to specify
+the settings in the format in which their methods of "requests" are accepted
 
 ## Anonymous agent
 
-or simple agent - agent that does not require authorization to work with instagram. In contrast to the authorized agent has some limitations
+or simple agent - agent that does not require authorization to work with instagram. In contrast to
+the authorized agent has some limitations
 
 You can create anonymous agent as follows
 
@@ -427,9 +447,69 @@ account - account for unfollowing
 
 settings - dict with settings for connection
 
+## Exception handler
+
 ## Examples
 
 Any useful examples with InstaParser
 
+* Parsing all photos from feed (the method is suitable for all list structures)
+
+```python3
+from instaparser.agents import Agent
+from instaparser.entities import Media
+
+photos = []
+agent = Agent()
+
+medias, pointer = agent.feed()
+for media in medias:
+    if not media.is_video:
+        photos.append(media.display_url)
+
+while not pointer is None:
+    medias, pointer = agent.feed(pointer=pointer)
+    for media in medias:
+        if not media.is_video:
+            photos.append(media.display_url)
+```
+
+* Use proxy
+
+```python3
+from instaparser.agents import Agent
+
+settings = {"proxies": {"any_ip": any_port}}
+
+agent = Agent(settings=settings)
+```
+
+* Change http handler
+
+```python3
+from instaparser.agents import Agent, exception_handler
+from requests.exceptions import HTTPError
+
+def handler(exception, *args, **kwargs):
+    print("I think it is not a critical error. Maybe, try again with new parameters?")
+    args.append("It is new parameter")
+    return (args, kwargs)
+
+exception_handler[HTTPError] = handler
+```
+
 ## Help the author
 
+You can help me in three ways:
+
+## Test the library
+
+You can test the library using tests that are in the repository in the test folder
+
+## Contribute repo
+
+Also you can add a new feature and send it using the requester pool
+
+## Donate 
+
+A win-win option is to send me a couple of cents for a cup of coffee

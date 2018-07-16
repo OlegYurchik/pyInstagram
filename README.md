@@ -504,8 +504,71 @@ You can help me in three ways:
 
 ## Test the library
 
-You can test the library using tests that are in the repository in the test folder
+You can test the library using tests that are in the repository in the "tests" folder. Testing is
+done using **PyTest**. 
 
+You can run the tests in the following ways:
+
+1. PyTest from OS
+
+```bash
+py.test -v -s "tests/entities.py" "tests/anon.py" "tests/auth.py"
+```
+
+2. PyTest from Virtualenv
+
+```bash
+source VENV/bin/activate
+py.test -v -s "tests/entities.py" "tests/anon.py" "tests/auth.py"
+deactivate
+```
+
+3. PyTest by xGod
+
+```bash
+cd deploy
+xgod/xgod build.xg tests
+```
+
+For testing in the folder "tests", you need to create a config.json file, the template file is also
+located in the folder "tests" - .config.json
+
+You can also test the library for syntax errors using PyLint. I do not know how to solve some
+problems that the PyLint gives out, and I will be glad if you will offer possible solutions
+
+1. PyLint from OS
+
+```bash
+files=$(find "$src_dir" -name "*.py")
+IFS="
+"
+for file in ${files[@]}
+do
+    pylint "$file"
+done
+```
+
+2. PyLint from Virtualenv
+
+```bash
+source VENV/bin/activate
+files=$(find "$src_dir" -name "*.py")
+IFS="
+"
+for file in ${files[@]}
+do
+    pylint "$file"
+done
+deactivate
+```
+
+3. PyLint by xGod
+
+```bash
+cd deploy
+xgod/xgod build.xg lint
+```
+ 
 ## Contribute repo
 
 Also you can add a new feature and send it using the requester pool

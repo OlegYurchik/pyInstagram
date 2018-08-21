@@ -23,7 +23,7 @@ package virtualenv: python
 # Virtual environment
 
 target create_venv: virtualenv
-    virtualenv --no-site-packages -p python3.6 --prompt=VENV "$venv_dir"
+    ${XG_DISTRIBUTION[root]} virtualenv --no-site-packages -p python3.6 --prompt=VENV "$venv_dir"
 
 check create_venv
     if [ -f "$venv_dir/bin/activate" ]; then
@@ -37,8 +37,8 @@ endcheck
 
 target install: create_venv
     source "$(echo "$venv_dir" | sed 's/\ /\\\ /g')"/bin/activate
-    pip3.6 install -r "$src_dir/requirements.txt"
-    pip3.6 install "$src_dir"
+    ${XG_DISTRIBUTION[root]} pip3 install -r "$src_dir/requirements.txt"
+    ${XG_DISTRIBUTION[root]} pip3 install "$src_dir"
     deactivate
 
 

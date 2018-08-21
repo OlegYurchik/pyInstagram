@@ -33,7 +33,7 @@ class Agent:
         query = "https://www.instagram.com/"
         if not obj is None:
             query += obj._base_url+getattr(obj, obj._primary_key)
-            
+        
         response = self._get_request(query, **settings)
 
         try:
@@ -129,6 +129,7 @@ class Agent:
                     "%s:%s" % (self._rhx_gis, settings["params"]["variables"])
             settings["headers"]["X-Instagram-GIS"] = \
                 hashlib.md5(settings["headers"]["X-Instagram-GIS"].encode("utf-8")).hexdigest()
+            settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
             
             response = self._get_request("https://www.instagram.com/graphql/query/", **settings)
             
@@ -258,6 +259,7 @@ class Agent:
                     "%s:%s" % (self._rhx_gis, settings["params"]["variables"])
             settings["headers"]["X-Instagram-GIS"] = \
                 hashlib.md5(settings["headers"]["X-Instagram-GIS"].encode("utf-8")).hexdigest()
+            settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
 
             response = self._get_request("https://www.instagram.com/graphql/query/", **settings)
 
@@ -389,6 +391,7 @@ class AgentAccount(Account, Agent):
                     "%s:%s" % (self._rhx_gis, settings["params"]["variables"])
             settings["headers"]["X-Instagram-GIS"] = \
                 hashlib.md5(settings["headers"]["X-Instagram-GIS"].encode("utf-8")).hexdigest()
+            settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
 
             response = self._get_request("https://www.instagram.com/graphql/query/", **settings)
 
@@ -465,6 +468,7 @@ class AgentAccount(Account, Agent):
                     "%s:%s" % (self._rhx_gis, settings["params"]["variables"])
             settings["headers"]["X-Instagram-GIS"] = \
                 hashlib.md5(settings["headers"]["X-Instagram-GIS"].encode("utf-8")).hexdigest()
+            settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
 
             response = self._get_request("https://www.instagram.com/graphql/query/", **settings)
 
@@ -540,6 +544,7 @@ class AgentAccount(Account, Agent):
                     "%s:%s" % (self._rhx_gis, settings["params"]["variables"])
             settings["headers"]["X-Instagram-GIS"] = \
                 hashlib.md5(settings["headers"]["X-Instagram-GIS"].encode("utf-8")).hexdigest()
+            settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
 
             response = self._get_request("https://www.instagram.com/graphql/query/", **settings)
 
@@ -608,6 +613,7 @@ class AgentAccount(Account, Agent):
                     "%s:%s" % (self._rhx_gis, settings["params"]["variables"])
             settings["headers"]["X-Instagram-GIS"] = \
                 hashlib.md5(settings["headers"]["X-Instagram-GIS"].encode("utf-8")).hexdigest()
+            settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
 
             response = self._get_request("https://www.instagram.com/graphql/query/", **settings)
 

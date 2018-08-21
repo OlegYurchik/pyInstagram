@@ -36,6 +36,9 @@ def http_response_handler(exception, *args, **kwargs):
     if exception.response.status_code == 429:
         sleep(600)
         return (args, kwargs)
+    if exception.response.status_code == 400:
+        sleep(60)
+        pass
 
     raise exception
 

@@ -42,21 +42,6 @@ target install: create_venv
     deactivate
 
 
-# Targets
-
-target lint: install
-    source "$(echo $venv_dir | sed 's/\ /\\\ /g')"/bin/activate
-    files=$(find "$src_dir" -name "*.py")
-    echo "" > "$script_dir/../pylint.log"
-    IFS="
-"
-    for file in ${files[@]}
-    do
-        pylint "$file" >> "$script_dir/../pylint.log"
-    done
-    deactivate
-
-
 
 # Tests 
 

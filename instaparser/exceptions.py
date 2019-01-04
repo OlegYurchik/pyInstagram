@@ -22,8 +22,12 @@ class AuthException(InstagramException):
 
 
 class UnexpectedResponse(InstagramException):
-    def __init__(self, url, data=None):
-        super().__init__("Get unexpected response from '%s' with data: %s" % (url, str(data)))
+    def __init__(self, exception, url, data=None):
+        super().__init__("Get unexpected response from '%s' with data: %s\nError: %s" % (
+            url,
+            str(data),
+            str(exception),
+        ))
 
 
 class NotUpdatedElement(InstagramException):

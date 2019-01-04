@@ -1,4 +1,3 @@
-# Cache metaclass for optimized memory
 class ElementConstructor(type):
     def __new__(mcs, name, classes, fields):
         def delete(self):
@@ -23,7 +22,6 @@ class ElementConstructor(type):
             cls._cache[str(key)] = super().__call__(str(key), *args, **kwargs)
 
         return cls._cache[str(key)]
-        
 
 
 # Common abstract classes 
@@ -36,10 +34,8 @@ class UpdatableElement(Element):
     def _entry_data_path(self):
         raise NotImplementedError
 
-
     def _base_url(self):
         raise NotImplementedError
-
 
     def _set_data(self):
         raise NotImplementedError
@@ -54,14 +50,12 @@ class HasMediaElement(UpdatableElement):
 
 
 
-# Entity classes
 class Account(HasMediaElement):
     _primary_key = "login"
     _entry_data_path = ("ProfilePage", 0, "graphql", "user")
     _base_url = ""
     _media_path = ("user", "edge_owner_to_timeline_media")
     _media_query_hash = "c6809c9c025875ac6f02619eae97a80e"
-
 
     def __init__(self, login):
         self.id = None
@@ -81,7 +75,6 @@ class Account(HasMediaElement):
         self.media = set()
         self.follows = set()
         self.followers = set()
-
 
     def _set_data(self, data):
         self.id = data["id"]
@@ -103,7 +96,6 @@ class Media(UpdatableElement):
     _entry_data_path = ("PostPage", 0, "graphql", "shortcode_media")
     _base_url = "p/"
 
-
     def __init__(self, code):
         self.id = None
         self.code = code
@@ -122,7 +114,6 @@ class Media(UpdatableElement):
 
         self.likes = set()
         self.comments = set()
-
 
     def _set_data(self, data):
         self.id = data["id"]
@@ -154,7 +145,6 @@ class Location(HasMediaElement):
     _media_path = ("location", "edge_location_to_media")
     _media_query_hash = "ac38b90f0f3981c42092016a37c59bf7"
 
-
     def __init__(self, id):
         self.id = id
         self.slug = None
@@ -166,7 +156,6 @@ class Location(HasMediaElement):
 
         self.media = set()
         self.top_posts = set()
-
 
     def _set_data(self, data):
         self.id = data["id"]
@@ -188,7 +177,6 @@ class Tag(HasMediaElement):
     _media_path = ("hashtag", "edge_hashtag_to_media")
     _media_query_hash = "ded47faa9a1aaded10161a2ff32abb6b"
 
-
     def __init__(self, name):
         self.name = name
         self.media_count = None
@@ -196,16 +184,15 @@ class Tag(HasMediaElement):
         self.media = set()
         self.top_posts = set()
 
-
     def _set_data(self, data):
         self.name = data["name"]
         self.media_count = data["edge_hashtag_to_media"]["count"]
         for node in data["edge_hashtag_to_top_posts"]["edges"]:
             self.top_posts.add(Media(node["node"]["shortcode"]))
 
+
 class Comment(Element):
     _primary_key = "id"
-
 
     def __init__(self, id, media, owner, text, created_at):
         self.id = id

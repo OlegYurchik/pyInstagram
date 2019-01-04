@@ -32,7 +32,7 @@ class Agent:
         
         query = "https://www.instagram.com/"
         if not obj is None:
-            query += obj._base_url+getattr(obj, obj._primary_key)
+            query += obj._base_url + getattr(obj, obj._primary_key)
         
         response = self._get_request(query, **settings)
 
@@ -98,12 +98,15 @@ class Agent:
                     pointer = page_info["end_cursor"]
                 
                 if len(edges) < count and page_info["has_next_page"]:
-                    count = count-len(edges)
+                    count = count - len(edges)
                 else:
                     return medias, pointer
                 
             except (ValueError, KeyError):
-                raise UnexpectedResponse()
+                raise UnexpectedResponse(
+                    "https://www.instagram.com/" + obj._base_url + getattr(obj, obj._primary_key),
+                    data,
+                )
 
         if not "params" in settings:
             settings["params"] = {"query_hash": obj._media_query_hash}
@@ -168,7 +171,6 @@ class Agent:
 
     @exception_manager.decorator
     def get_likes(self, media, settings={}):
-        # Check data
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
         if not isinstance(media, Media):
@@ -194,13 +196,15 @@ class Agent:
                 media.likes.add(account)
                 likes.append(account)
         except (ValueError, KeyError):
-            raise UnexpectedResponse()
+            raise UnexpectedResponse(
+                "https://www.instagram.com/" + media._base_url + getattr(media, media._primary_key),
+                data,
+            )
         return likes, None
 
 
     @exception_manager.decorator
     def get_comments(self, media, pointer=None, count=35, settings={}, limit=50):
-        # Check data
         if not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
         if not isinstance(count, int):
@@ -795,7 +799,7 @@ class AgentAccount(Account, Agent):
 
         headers = {
             "referer": referer,
-            "x-csrftoken": self._session.cookies["csrftoken"],
+            "x-csrftoken": self._csrf_token,
             "x-instagram-ajax": "1",
             "x-requested-with": "XMLHttpRequest",
         }

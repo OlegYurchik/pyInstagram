@@ -167,66 +167,6 @@ def test_get_comments(count, shortcode):
     Media.clear_cache()
 
 
-@pytest.mark.parametrize("count,username", [(randint(5000, 10000), choice(accounts))])
-def test_get_media_account_long(count, username):
-    anon = Agent()
-    account = Account(username)
-    
-    anon.update(account)
-    
-    count = account.media_count
-    
-    data, pointer = anon.get_media(account, count=count)
-
-    assert(min(account.media_count, count) == len(data))
-    assert((pointer is None) == (account.media_count <= count))
-
-    Account.clear_cache()
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("count,id", [(randint(5000, 10000), choice(locations))])
-def test_get_media_location_long(count, id):
-    anon = Agent()
-    location = Location(id)
-    
-    data, pointer = anon.get_media(location, count=count)
-
-    assert(min(location.media_count, count) == len(data))
-    assert((pointer is None) == (location.media_count <= count))
-
-    Location.clear_cache()
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("count,name", [(randint(5000, 10000), choice(tags))])
-def test_get_media_tag_long(count, name):
-    anon = Agent()
-    tag = Tag(name)
-    
-    data, pointer = anon.get_media(tag, count=count)
-
-    assert(min(tag.media_count, count) == len(data))
-    assert((pointer is None) == (tag.media_count <= count))
-
-    Tag.clear_cache()
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("count,shortcode",
-                         [(randint(5000, 10000), choice(photos+photo_sets+videos))])
-def test_get_comments_long(count, shortcode):
-    anon = Agent()
-    media = Media(shortcode)
-    
-    data, pointer = anon.get_comments(media, count=count)
-    
-    assert(min(media.comments_count, count) == len(data))
-    assert((pointer is None) == (media.likes_count <= count))
-
-    Media.clear_cache()
-
-
 @pytest.mark.parametrize("count,username", [(randint(1, 10), choice(accounts))])
 def test_get_media_account_pointer(count, username):
     anon = Agent()

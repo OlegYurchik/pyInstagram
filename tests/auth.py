@@ -2,7 +2,7 @@ import pytest
 from random import randint, choice
 
 from instaparser.agents import AgentAccount
-from instaparser.entities import Account, Media, Location, Tag
+from instaparser.entities import Account, Media, Location, Tag, Comment
 
 from tests.settings import accounts, creds, locations, photos, photo_sets, tags, videos
 
@@ -207,104 +207,6 @@ def test_get_feed(login, password, count):
 
 
 @pytest.mark.parametrize("login,password,count,username",
-                         parametrize([randint(5000, 10000)], [choice(accounts)]))
-def test_get_media_account_long(login, password, count, username):
-    agent = AgentAccount(login, password)
-    account = Account(username)
-    
-    data, pointer = agent.get_media(account, count=count)
-
-    assert(min(account.media_count, count) == len(data))
-    assert((pointer is None) == (account.media_count <= count))
-
-    Account.clear_cache()
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("login,password,count,id", 
-                         parametrize([randint(5000, 10000)], [choice(locations)]))
-def test_get_media_location_long(login, password, count, id):
-    agent = AgentAccount(login, password)
-    location = Location(id)
-    
-    data, pointer = agent.get_media(location, count=count)
-
-    assert(min(location.media_count, count) == len(data))
-    assert((pointer is None) == (location.media_count <= count))
-
-    Location.clear_cache()
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("login,password,count,name", 
-                         parametrize([randint(5000, 10000)], [choice(tags)]))
-def test_get_media_tag_long(login, password, count, name):
-    agent = AgentAccount(login, password)
-    tag = Tag(name)
-    
-    data, pointer = agent.get_media(tag, count=count)
-
-    assert(min(tag.media_count, count) == len(data))
-    assert((pointer is None) == (tag.media_count <= count))
-
-    Tag.clear_cache()
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("login,password,count,shortcode",
-                         parametrize([randint(5000, 10000)], [choice(photos+photo_sets+videos)]))
-def test_get_likes_long(login, password, count, shortcode):
-    agent = AgentAccount(login, password)
-    media = Media(shortcode)
-    
-    data, pointer = agent.get_likes(media, count=count)
-    
-    assert(min(media.likes_count, count) == len(data))
-    assert((pointer is None) == (media.likes_count <= count))
-
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("login,password,count,username", 
-                         parametrize([randint(5000, 10000)], [choice(accounts)]))
-def test_get_follows_long(login, password, count, username):
-    agent = AgentAccount(login, password)
-    account = Account(username)
-    
-    data, pointer = agent.get_follows(account, count=count)
-
-    assert(min(account.follows_count, count) == len(data))
-    assert((pointer is None) == (account.follows_count <= count))
-
-    Account.clear_cache()
-
-
-@pytest.mark.parametrize("login,password,count,username", 
-                         parametrize([randint(5000, 10000)], [choice(accounts)]))
-def test_get_followers_long(login, password, count, username):
-    agent = AgentAccount(login, password)
-    account = Account(username)
-    
-    data, pointer = agent.get_followers(account, count=count)
-
-    assert(min(account.followers_count, count) == len(data))
-    assert((pointer is None) == (account.followers_count <= count))
-
-    Account.clear_cache()
-
-
-@pytest.mark.parametrize("login,password,count", parametrize([randint(5000, 10000)]))
-def test_get_feed_long(login, password, count):
-    agent = AgentAccount(login, password)
-    
-    data, pointer = agent.feed(count=count)
-
-    assert(count >= len(data))
-    
-    Account.clear_cache()
-
-
-@pytest.mark.parametrize("login,password,count,username",
                          parametrize([randint(1, 10)], [choice(accounts)]))
 def test_get_media_account_pointer(login, password, count, username):
     agent = AgentAccount(login, password)
@@ -364,7 +266,7 @@ def test_get_media_tag_pointer(login, password, count, name):
                          parametrize([randint(1, 10)], [choice(photos+photo_sets+videos)]))
 def test_get_likes_pointer(login, password, count, shortcode):
     agent = AgentAccount(login, password)
-    media = Media(username)
+    media = Media(shortcode)
     pointer = None
     data = []
     
@@ -424,15 +326,6 @@ def test_get_feed_pointer(login, password, count):
 
     Account.clear_cache()
     Media.clear_cache()
-
-
-
-
-
-
-
-
-
 
 
 @pytest.mark.parametrize("login,password,shortcode", parametrize(photos))

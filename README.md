@@ -64,20 +64,6 @@ or
 5. deactivate
 ```
 
-## Installation by xGod
-
-xGod (https://github.com/OlegYurchik/xGod) is a convenient manager for managing the assembly,
-installation, and deployment of the environment. You can say that this is an extended make
-
-```bash
-1. git clone https://github.com/olegyurchik/InstaParser.git
-2. cd InstaParser/deploy
-3. xgod/xgod build.xg install
-```
-
-This action will automatically configure and install the package in a virtual environment. This is
-fine if you just want to test the library in your own code
-
 ## Quick Start
 
 After installation, you can use the library in your code. Below is a sneak example of using the
@@ -116,21 +102,21 @@ Each entity has a unique key:
 Below is an example of creating all entities
 
 ```python3
-from instagram.entities import Account, Media, Location, Tag, Comment
+from instaparser.entities import Account, Media, Location, Tag, Comment
 
 account = Account("zuck")
 media = Media("Bk09NSFn3IX")
 location = Location(4132822)
 tag = Tag("instagram")
-comment = Comment(id=17961800224030417, media=media, owner=account,  text="Nice pic Yaz...",
-created_at=1531512139)
+comment = Comment(17961800224030417, media=media, owner=account,  text="Nice pic Yaz...",
+                  created_at=1531512139)
 ```
 
 Do not be afraid to create entities with the same keys, so each key belongs to only one object and
 it can not be broken
 
 ```python3
-from instagram.entities import Account
+from instaparser.entities import Account
 
 a = Account("test")
 b = Account("test")
@@ -228,7 +214,8 @@ To create an Comment entity as an argument, the constructor should pass the id, 
 (Account object), text and created time in unix format
 
 ```python3
-tag = Tag("instagram")
+comment = Comment(18019322278024340, media=media, owner=account, text="It is a comment",
+                  created_at=1546548300)
 ```
 
 The Tag object has the following fields:
@@ -250,13 +237,13 @@ the settings in the format in which their methods of "requests" are accepted
 
 ## Anonymous agent
 
-or simple agent - agent that does not require authorization to work with instagram. In contrast to
+or simple agent - agent that does not require authorization to work with Instagram. In contrast to
 the authorized agent has some limitations
 
 You can create anonymous agent as follows
 
 ```python3
-from instagram.agents import Agent
+from instaparser.agents import Agent
 
 agent = Agent()
 ```
@@ -314,7 +301,7 @@ Agent who requires authorization for login and password for work
 You can create authorized agent as follows
 
 ```python3
-from instagram.agents import Agent
+from instaparser.agents import Agent
 
 agent = AgentAccount("username", "password")
 ```
@@ -456,11 +443,11 @@ Any useful examples with InstaParser
 * Parsing all photos from feed (the method is suitable for all list structures)
 
 ```python3
-from instaparser.agents import Agent
+from instaparser.agents import AgentAccount
 from instaparser.entities import Media
 
 photos = []
-agent = Agent()
+agent = AgentAccount("username", "password")
 
 medias, pointer = agent.feed()
 for media in medias:
@@ -523,13 +510,6 @@ py.test -v -s "tests/entities.py" "tests/anon.py" "tests/auth.py"
 deactivate
 ```
 
-3. PyTest by xGod
-
-```bash
-cd deploy
-xgod/xgod build.xg tests
-```
-
 For testing in the folder "tests", you need to create a config.json file, the template file is also
 located in the folder "tests" - .config.json
 
@@ -560,13 +540,6 @@ do
     pylint "$file"
 done
 deactivate
-```
-
-3. PyLint by xGod
-
-```bash
-cd deploy
-xgod/xgod build.xg lint
 ```
  
 ## Contribute repo

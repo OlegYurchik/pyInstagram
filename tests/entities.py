@@ -3,7 +3,6 @@ import pytest
 from instaparser.entities import Account, Media, Location, Tag, Comment
 
 
-
 def test_clear_cache_account():
     account = Account("test")
     

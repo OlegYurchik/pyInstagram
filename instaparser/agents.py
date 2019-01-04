@@ -22,7 +22,6 @@ class Agent:
         
         self.update(settings=settings)
 
-
     @exception_manager.decorator
     def update(self, obj=None, settings={}):
         if not isinstance(settings, dict):
@@ -56,7 +55,6 @@ class Agent:
             return data
         except (AttributeError, KeyError, ValueError):
             raise UnexpectedResponse(response.url, response.text)
-
 
     @exception_manager.decorator
     def get_media(self, obj, pointer=None, count=12, settings={}, limit=50):
@@ -168,39 +166,80 @@ class Agent:
             except (ValueError, KeyError):
                 raise UnexpectedResponse(response.url, response.text)
 
-
     @exception_manager.decorator
-    def get_likes(self, media, settings={}):
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+    def get_likes(self, media, pointer=None, count=20, settings={}, limit=50):
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
+        if not isinstance(count, int):
+            raise TypeError("'count' must be int type")
+        if not isinstance(settings, dict):
+            raise TypeError("'settings' must be dict type")
+        if not isinstance(limit, int):
+            raise TypeError("'limit' must be int type")
 
-        data = self.update(media, settings)
-        likes = []
+        self.update(media, settings)
         
-        try:
-            data = data["edge_media_preview_like"]
-            edges = data["edges"]
-            
-            for edge in edges:
-                node = edge["node"]
-                account = Account(node["username"])
-                account.id = node["id"]
-                account.profile_pic_url = node["profile_pic_url"]
-                if "is_verified" in node:
-                    account.is_verified = node["is_verified"]
-                if "full_name" in node:
-                    account.full_name = node["full_name"]
+        query_hash = "1cb6ec562846122743b61e492c85999f"
+        if pointer:
+            variables_string = '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
+        else:
+            variables_string = '{{"shortcode":"{shortcode}","first":{first}}}'
+        likes = []
+
+        if "params" in settings:
+            settings["params"]["query_hash"] = query_hash
                 
-                media.likes.add(account)
-                likes.append(account)
-        except (ValueError, KeyError):
-            raise UnexpectedResponse(
-                "https://www.instagram.com/" + media._base_url + getattr(media, media._primary_key),
-                data,
-            )
-        return likes, None
+        else:
+            settings["params"] = {"query_hash": query_hash}
+
+        while True:
+            data = {"shortcode": media.code, "first": min(limit, count)}
+            if pointer:
+                data["after"] = pointer
+
+            settings["params"]["variables"] = variables_string.format(**data)
+            if not "headers" in settings:
+                settings["headers"] = {
+                    "X-Instagram-GIS": "%s:%s" % (self._rhx_gis, settings["params"]["variables"]),
+                }
+            else:
+                settings["headers"]["X-Instagram-GIS"] = \
+                    "%s:%s" % (self._rhx_gis, settings["params"]["variables"])
+            settings["headers"]["X-Instagram-GIS"] = \
+                hashlib.md5(settings["headers"]["X-Instagram-GIS"].encode("utf-8")).hexdigest()
+            settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
+
+            response = self._get_request("https://www.instagram.com/graphql/query/", **settings)
+
+            try:
+                data = response.json()["data"]["shortcode_media"]["edge_liked_by"]
+                edges = data["edges"]
+                page_info = data["page_info"]
+                media.likes_count = data["count"]
+                
+                for index in range(min(len(edges), count)):
+                    node = edges[index]["node"]
+                    account = Account(node["username"])
+                    account.id = node["id"]
+                    account.profile_pic_url = node["profile_pic_url"]
+                    account.is_verified = node["is_verified"]
+                    account.full_name = node["full_name"]
+                    media.likes.add(account)
+                    likes.append(account)
+                
+                if page_info["has_next_page"]:
+                    pointer = page_info["end_cursor"]
+                else:
+                    pointer = None
+
+                if len(edges) < count and page_info["has_next_page"]:
+                    count = count-len(edges)
+                    variables_string = \
+                        '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
+                else:
+                    return likes, pointer
+            except (ValueError, KeyError):
+                raise UnexpectedResponse(response.url, response.text)
 
 
     @exception_manager.decorator
@@ -353,82 +392,6 @@ class AgentAccount(Account, Agent):
     @exception_manager.decorator
     def get_media(self, obj, pointer=None, count=12, settings={}, limit=12):
         return super().get_media(obj, pointer, count, settings, limit)
-
-    @exception_manager.decorator
-    def get_likes(self, media, pointer=None, count=20, settings={}, limit=50):
-        if not isinstance(media, Media):
-            raise TypeError("'media' must be Media type")
-        if not isinstance(count, int):
-            raise TypeError("'count' must be int type")
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
-        if not isinstance(limit, int):
-            raise TypeError("'limit' must be int type")
-
-        self.update(media, settings)
-        
-        query_hash = "1cb6ec562846122743b61e492c85999f"
-        if pointer:
-            variables_string = '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
-        else:
-            variables_string = '{{"shortcode":"{shortcode}","first":{first}}}'
-        likes = []
-
-        if "params" in settings:
-            settings["params"]["query_hash"] = query_hash
-                
-        else:
-            settings["params"] = {"query_hash": query_hash}
-
-        while True:
-            data = {"shortcode": media.code, "first": min(limit, count)}
-            if pointer:
-                data["after"] = pointer
-
-            settings["params"]["variables"] = variables_string.format(**data)
-            if not "headers" in settings:
-                settings["headers"] = {
-                    "X-Instagram-GIS": "%s:%s" % (self._rhx_gis, settings["params"]["variables"]),
-                }
-            else:
-                settings["headers"]["X-Instagram-GIS"] = \
-                    "%s:%s" % (self._rhx_gis, settings["params"]["variables"])
-            settings["headers"]["X-Instagram-GIS"] = \
-                hashlib.md5(settings["headers"]["X-Instagram-GIS"].encode("utf-8")).hexdigest()
-            settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
-
-            response = self._get_request("https://www.instagram.com/graphql/query/", **settings)
-
-            try:
-                data = response.json()["data"]["shortcode_media"]["edge_liked_by"]
-                edges = data["edges"]
-                page_info = data["page_info"]
-                media.likes_count = data["count"]
-                
-                for index in range(min(len(edges), count)):
-                    node = edges[index]["node"]
-                    account = Account(node["username"])
-                    account.id = node["id"]
-                    account.profile_pic_url = node["profile_pic_url"]
-                    account.is_verified = node["is_verified"]
-                    account.full_name = node["full_name"]
-                    media.likes.add(account)
-                    likes.append(account)
-                
-                if page_info["has_next_page"]:
-                    pointer = page_info["end_cursor"]
-                else:
-                    pointer = None
-                
-                if len(edges) < count and page_info["has_next_page"]:
-                    count = count-len(edges)
-                    variables_string = \
-                        '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
-                else:
-                    return likes, pointer
-            except (ValueError, KeyError):
-                raise UnexpectedResponse(response.url, response.text)
-
 
     @exception_manager.decorator
     def get_follows(self, account=None, pointer=None, count=20, settings={}, limit=50):

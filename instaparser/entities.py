@@ -31,17 +31,27 @@ class Element(metaclass=ElementConstructor):
 
 
 class UpdatableElement(Element):
+    def _set_data(self):
+        raise NotImplementedError
+
+
+class UrlUpdatableElement(UpdatableElement):
     def _entry_data_path(self):
         raise NotImplementedError
 
     def _base_url(self):
         raise NotImplementedError
 
-    def _set_data(self):
+
+class GraphUpdatableElement(UpdatableElement):
+    def _variable_string(self):
+        raise NotImplementedError
+
+    def _hash(self):
         raise NotImplementedError
 
 
-class HasMediaElement(UpdatableElement):
+class HasMediaElement(UrlUpdatableElement):
     def _media_path(self):
         raise NotImplementedError
     
@@ -91,7 +101,7 @@ class Account(HasMediaElement):
         self.country_block = data["country_block"]
 
 
-class Media(UpdatableElement):
+class Media(UrlUpdatableElement):
     _primary_key = "code"
     _entry_data_path = ("PostPage", 0, "graphql", "shortcode_media")
     _base_url = "p/"
@@ -110,6 +120,8 @@ class Media(UpdatableElement):
         self.video_url = None
         self.is_ad = None
         self.display_url = None
+        self.resources = None
+        self.childs = None
         self.dimensions = None
 
         self.likes = set()
@@ -136,6 +148,25 @@ class Media(UpdatableElement):
         if "is_ad" in data:
             self.is_ad = data["is_ad"]
         self.display_url = data["display_url"]
+        self.resources = [resource["src"] for resource in data["display_resources"]]
+        self.childs = list()
+        if "edge_sidecar_to_children" in data:
+            for edge in data["edge_sidecar_to_children"]["edges"]:
+                if "shortcode" in edge["node"] and edge["node"]["shortcode"] != self.code:
+                    self.childs.append(Media(edge["node"]["shortcode"]))
+
+
+class Story(GraphUpdatableElement):
+    _primary_key = "id"
+    _hash = "eb1918431e946dd39bf8cf8fb870e426"
+
+    def __init__(self, id):
+        self.id = id
+
+    def _variable_string(self):
+        return f'{{"reel_ids":["{self.id}"],"tag_names":[],"location_ids":[],\
+            "highlight_reel_ids":[],"precomposed_overlay":false,"show_story_viewer_list":true,\
+            "story_viewer_fetch_count":50,"story_viewer_cursor":""}}'
 
 
 class Location(HasMediaElement):

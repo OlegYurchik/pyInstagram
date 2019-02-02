@@ -33,9 +33,7 @@ class Element(metaclass=ElementConstructor):
 class UpdatableElement(Element):
     def _set_data(self):
         raise NotImplementedError
-
-
-class UrlUpdatableElement(UpdatableElement):
+    
     def _entry_data_path(self):
         raise NotImplementedError
 
@@ -43,15 +41,7 @@ class UrlUpdatableElement(UpdatableElement):
         raise NotImplementedError
 
 
-class GraphUpdatableElement(UpdatableElement):
-    def _variable_string(self):
-        raise NotImplementedError
-
-    def _hash(self):
-        raise NotImplementedError
-
-
-class HasMediaElement(UrlUpdatableElement):
+class HasMediaElement(UpdatableElement):
     def _media_path(self):
         raise NotImplementedError
     
@@ -101,7 +91,7 @@ class Account(HasMediaElement):
         self.country_block = data["country_block"]
 
 
-class Media(UrlUpdatableElement):
+class Media(UpdatableElement):
     _primary_key = "code"
     _entry_data_path = ("PostPage", 0, "graphql", "shortcode_media")
     _base_url = "p/"
@@ -156,17 +146,11 @@ class Media(UrlUpdatableElement):
                     self.childs.append(Media(edge["node"]["shortcode"]))
 
 
-class Story(GraphUpdatableElement):
+class Story(Element):
     _primary_key = "id"
-    _hash = "eb1918431e946dd39bf8cf8fb870e426"
 
     def __init__(self, id):
         self.id = id
-
-    def _variable_string(self):
-        return f'{{"reel_ids":["{self.id}"],"tag_names":[],"location_ids":[],\
-            "highlight_reel_ids":[],"precomposed_overlay":false,"show_story_viewer_list":true,\
-            "story_viewer_fetch_count":50,"story_viewer_cursor":""}}'
 
 
 class Location(HasMediaElement):

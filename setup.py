@@ -3,7 +3,7 @@ from os.path import join, dirname
 
 setup(
     name = 'instaparser',
-    version = '1.0',
+    version = '1.1',
     
     author = "Oleg Yurchik",
     author_email = "oleg.yurchik@protonmail.com",

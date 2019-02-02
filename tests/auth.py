@@ -206,6 +206,16 @@ def test_get_feed(login, password, count):
     Account.clear_cache()
 
 
+@pytest.mark.parametrize("login,password", [(creds["login"], creds["password"])])
+def test_get_stories(login, password):
+    agent = AgentAccount(login, password)
+
+    data = agent.stories()
+
+    Account.clear_cache()
+    Story.clear_cache()
+
+
 @pytest.mark.parametrize("login,password,count,username",
                          parametrize([randint(1, 10)], [choice(accounts)]))
 def test_get_media_account_pointer(login, password, count, username):

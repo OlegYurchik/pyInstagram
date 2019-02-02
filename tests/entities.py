@@ -1,6 +1,6 @@
 import pytest
 
-from instaparser.entities import Account, Media, Location, Tag, Comment
+from instaparser.entities import Account, Comment, Location, Media, Story, Tag
 
 
 def test_clear_cache_account():
@@ -46,3 +46,12 @@ def test_clear_cache_comment():
     
     assert(Comment._cache == dict())
     assert(Media._cache == dict())
+
+
+def test_clear_cache_story():
+    account = Account("test")
+    story = Story("test")
+    
+    Story.clear_cache()
+
+    assert(Story._cache == dict())

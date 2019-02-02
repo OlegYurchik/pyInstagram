@@ -21,7 +21,13 @@ class Agent:
         
         self.update(settings=settings)
 
-    def _page_update(self, obj, settings):
+    @exception_manager.decorator
+    def update(self, obj=None, settings={}):
+        if not isinstance(settings, dict):
+            raise TypeError("'settings' must be dict type")
+        if not isinstance(obj, UpdatableElement) and not obj is None:
+            raise TypeError("obj must be UpdatableElement type or None")
+        
         query = "https://www.instagram.com/"
         if not obj is None:
             query += obj._base_url + getattr(obj, obj._primary_key)
@@ -48,21 +54,6 @@ class Agent:
             return data
         except (AttributeError, KeyError, ValueError) as exception:
             raise UnexpectedResponse(exception, response.url, response.text)
-    
-    def _graphql_update(self, obj, settings):
-        pass
-
-    @exception_manager.decorator
-    def update(self, obj=None, settings={}):
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
-        if not isinstance(obj, UpdatableElement) and not obj is None:
-            raise TypeError("obj must be UpdatableElement type or None")
-        
-        if isinstance(obj, UrlUpdatableElement):
-            return self._page_update(obj=obj, settings=settings)
-        else:
-            return self._graphql_update(obj=obj, settings=settings)
 
     @exception_manager.decorator
     def get_media(self, obj, pointer=None, count=12, settings={}, limit=50):
@@ -540,8 +531,6 @@ class AgentAccount(Account, Agent):
 
     @exception_manager.decorator
     def stories(self, settings={}):
-        stories = []
-
         while True:
             response = self._graphql_request(
                 query_hash="60b755363b5c230111347a7a4e242001",

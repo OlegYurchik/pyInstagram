@@ -6,6 +6,15 @@ https://www.python.org/)
 [![paypal](https://img.shields.io/badge/-PayPal-blue.svg)](
 https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=YHRDQM5C3MJ3U)
 
+### What's new?
+
+* Version 1.1
+* Add new method for AgentAccount - stories(). This method return all stories from account's feed.
+* New entity - Story
+* Now Media entities have new fields: resources and child. Media resources - it is all resources
+for this post with different dimensions. Child - list with another Media entities in this post.
+* Add new test for getting stories
+
 ### Description
 This is a simple and easy-to-use library for interacting with the Instagram. The library works
 through the web interface of the Instagram and does not depend on the official API
@@ -16,7 +25,6 @@ User Guide
 * [Getting Started](#getting-started)
   * [Basic Installation](#basic-installation)
   * [Installation via Virtualenv](#installation-via-virtualenv)
-  * [Installation by xGod](#installation-by-xgod)
 * [Quick Start](#quick-start)
 * [Entities](#entities)
   * [Account](#account)
@@ -88,13 +96,15 @@ public page in the Instagram
 All the entities in the Instagram were represented in the library as:
 1. Account
 2. Media
-3. Location
-4. Tag
-5. Comment
+3. Story
+4. Location
+5. Tag
+6. Comment
 
 Each entity has a unique key:
 * **Account** - **username**
 * **Media** - **code**
+* **Story** - **id**
 * **Location** - **id**
 * **Tag** - **name**
 * **Comment** - **id**
@@ -102,10 +112,11 @@ Each entity has a unique key:
 Below is an example of creating all entities
 
 ```python3
-from instaparser.entities import Account, Media, Location, Tag, Comment
+from instaparser.entities import Account, Media, Story, Location, Tag, Comment
 
 account = Account("zuck")
 media = Media("Bk09NSFn3IX")
+story = Story(54312313)
 location = Location(4132822)
 tag = Tag("instagram")
 comment = Comment(17961800224030417, media=media, owner=account,  text="Nice pic Yaz...",
@@ -171,9 +182,22 @@ The Media object has the following fields:
 * video_url
 * is_ad
 * display_url
+* resources
+* child
 * dimensions
 * likes
 * comments
+
+## Story
+
+To create an Story entity as an argument constructor should pass the story's id
+
+```python3
+story = Story(1234124)
+```
+
+The Story object has the following fields:
+* id
 
 ## Location
 
@@ -383,6 +407,12 @@ count - number of last records
 settings - dict with settings for connection
 
 limit - limit of medias in one request
+
+* stories(self, settings={})
+
+This method return all stories in feed
+
+settings - dict with settings for connection
 
 * like(self, media, settings={})
 

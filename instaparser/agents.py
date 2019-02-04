@@ -4,9 +4,8 @@ import re
 import requests
 from requests.exceptions import HTTPError
 
-from instaparser.entities import (Account, Comment, Element, GraphUpdatableElement, HasMediaElement,
-                                  Media, Location, Story, Tag, UpdatableElement,
-                                  UrlUpdatableElement)
+from instaparser.entities import (Account, Comment, Element, HasMediaElement,Media, Location, Story,
+                                  Tag, UpdatableElement)
 from instaparser.exceptions import (AuthException, ExceptionManager, http_response_handler,
                                     InstagramException, InternetException, UnexpectedResponse,
                                     NotUpdatedElement)

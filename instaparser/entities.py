@@ -111,9 +111,9 @@ class Media(UpdatableElement):
         self.is_ad = None
         self.display_url = None
         self.resources = None
-        self.childs = None
-        self.dimensions = None
+        self.is_album = None
 
+        self.album = set()
         self.likes = set()
         self.comments = set()
 
@@ -139,11 +139,14 @@ class Media(UpdatableElement):
             self.is_ad = data["is_ad"]
         self.display_url = data["display_url"]
         self.resources = [resource["src"] for resource in data["display_resources"]]
-        self.childs = list()
-        if "edge_sidecar_to_children" in data:
+        self.album = set()
+        if data.get("__typename") == "GraphSidecar":
+            self.is_album = True
             for edge in data["edge_sidecar_to_children"]["edges"]:
-                if "shortcode" in edge["node"] and edge["node"]["shortcode"] != self.code:
-                    self.childs.append(Media(edge["node"]["shortcode"]))
+                if edge["node"].get("shortcode", self.code) != self.code:
+                    self.album.add(Media(edge["node"]["shortcode"]))
+        else:
+            self.is_album = False
 
 
 class Story(Element):

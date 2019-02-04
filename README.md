@@ -11,8 +11,9 @@ https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=YHRDQM5C3MJ
 * Version 1.1
 * Add new method for AgentAccount - stories(). This method return all stories from account's feed.
 * New entity - Story
-* Now Media entities have new fields: resources and child. Media resources - it is all resources
-for this post with different dimensions. Child - list with another Media entities in this post.
+* Now Media entities have new fields: resources, album and is_album. Media resources - it is all
+resources for this post with different dimensions. is_album - is this post is album? Album - it is \
+all media is this album (if this post is album).
 * Add new test for getting stories
 
 ### Description
@@ -182,9 +183,9 @@ The Media object has the following fields:
 * video_url
 * is_ad
 * display_url
+* is_album
 * resources
-* child
-* dimensions
+* album
 * likes
 * comments
 

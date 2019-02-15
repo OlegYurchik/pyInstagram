@@ -2,7 +2,7 @@ import pytest
 from random import randint, choice
 
 from instaparser.agents import AgentAccount
-from instaparser.entities import Account, Media, Location, Tag, Comment
+from instaparser.entities import Account, Comment, Location, Media, Story, Tag
 
 from tests.settings import accounts, creds, locations, photos, photo_sets, tags, videos
 

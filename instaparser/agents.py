@@ -403,7 +403,9 @@ class AgentAccount(Account, Agent):
         return super().update(obj, settings)
 
     @exception_manager.decorator
-    def get_media(self, obj, pointer=None, count=12, settings={}, limit=12):
+    def get_media(self, obj=None, pointer=None, count=12, settings={}, limit=12):
+        if obj is None:
+            obj=self
         return super().get_media(obj, pointer, count, settings, limit)
 
     @exception_manager.decorator

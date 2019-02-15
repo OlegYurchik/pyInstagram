@@ -99,10 +99,8 @@ class ExceptionManager:
 
 
 def http_response_handler(exception, *args, **kwargs):
-    if exception.response.status_code == 429:
-        sleep(600)
-        return (args, kwargs)
-    if exception.response.status_code == 400:
+    if exception.response.status_code in (400, 429):
         sleep(60)
+        return (args, kwargs)
 
     raise exception

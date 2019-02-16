@@ -1,4 +1,4 @@
-# InstaParser
+# pyInstaParser
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](
 https://github.com/OlegYurchik/InstaParser/blob/master/LICENSE)
 [![built with Python3](https://img.shields.io/badge/built%20with-Python3-red.svg)](
@@ -51,8 +51,8 @@ To basic installation you should have git, python3 (prefer python3.6 or later), 
 your system
 
 ```bash
-1. git clone https://github.com/olegyurchik/InstaParser.git
-2. cd InstaParser
+1. git clone https://github.com/olegyurchik/pyInstaParser.git
+2. cd pyInstaParser
 3. pip install .
 or
 3. python setup.py install
@@ -64,8 +64,8 @@ To installation via Virtualenv, you should have git, python3 (prefer python3.6 o
 (optionally) and virtualenv in your system
 
 ```bash
-1. git clone https://github.com/olegyurchik/InstaParser.git
-2. cd InstaParser
+1. git clone https://github.com/olegyurchik/pyInstaParser.git
+2. cd pyInstaParser
 3. source venv/bin/activate
 4. pip install .
 or

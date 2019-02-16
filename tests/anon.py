@@ -13,8 +13,8 @@ def test_update():
     
     anon.update()
     
-    assert(not getattr(anon, "_rhx_gis", None) is None)
-    assert(not getattr(anon, "_csrf_token", None) is None)
+    assert(not getattr(anon, "rhx_gis", None) is None)
+    assert(not getattr(anon, "csrf_token", None) is None)
 
 
 

@@ -1,61 +1,61 @@
 class ElementConstructor(type):
     def __new__(mcs, name, classes, fields):
         def delete(self):
-            key = self.__getattribute__(self._primary_key)
-            if key in self._cache:
-                del self._cache[key]
+            key = self.__getattribute__(self.primary_key)
+            if key in self.cache:
+                del self.cache[key]
 
         @classmethod
         def clear_cache(cls):
-            cls._cache.clear()
+            cls.cache.clear()
 
         fields["__del__"] = delete
         fields["clear_cache"] = clear_cache
-        fields["__str__"] = lambda self: str(self.__getattribute__(self._primary_key))
-        fields["__repr__"] = lambda self: str(self.__getattribute__(self._primary_key))
-        fields["_cache"] = dict()
+        fields["__str__"] = lambda self: str(self.__getattribute__(self.primary_key))
+        fields["__repr__"] = lambda self: str(self.__getattribute__(self.primary_key))
+        fields["cache"] = dict()
 
         return super().__new__(mcs, name, classes, fields)
 
     def __call__(cls, key, *args, **kwargs):
-        if not str(key) in cls._cache:
-            cls._cache[str(key)] = super().__call__(str(key), *args, **kwargs)
+        if not str(key) in cls.cache:
+            cls.cache[str(key)] = super().__call__(str(key), *args, **kwargs)
 
-        return cls._cache[str(key)]
+        return cls.cache[str(key)]
 
 
 # Common abstract classes 
 class Element(metaclass=ElementConstructor):
-    def _primary_key(self):
+    def primary_key(self):
         raise NotImplementedError
 
 
 class UpdatableElement(Element):
-    def _set_data(self):
+    def set_data(self):
         raise NotImplementedError
     
-    def _entry_data_path(self):
+    def entry_data_path(self):
         raise NotImplementedError
 
-    def _base_url(self):
+    def base_url(self):
         raise NotImplementedError
 
 
 class HasMediaElement(UpdatableElement):
-    def _media_path(self):
+    def media_path(self):
         raise NotImplementedError
     
-    def _media_query_hash(self):
+    def media_query_hash(self):
         raise NotImplementedError
 
 
 
 class Account(HasMediaElement):
-    _primary_key = "login"
-    _entry_data_path = ("ProfilePage", 0, "graphql", "user")
-    _base_url = ""
-    _media_path = ("user", "edge_owner_to_timeline_media")
-    _media_query_hash = "c6809c9c025875ac6f02619eae97a80e"
+    primary_key = "login"
+    entry_data_path = ("ProfilePage", 0, "graphql", "user")
+    base_url = ""
+    media_path = ("user", "edge_owner_to_timeline_media")
+    media_query_hash = "c6809c9c025875ac6f02619eae97a80e"
 
     def __init__(self, login):
         self.id = None
@@ -76,7 +76,7 @@ class Account(HasMediaElement):
         self.follows = set()
         self.followers = set()
 
-    def _set_data(self, data):
+    def set_data(self, data):
         self.id = data["id"]
         self.full_name = data["full_name"]
         self.profile_pic_url = data["profile_pic_url"]
@@ -92,9 +92,9 @@ class Account(HasMediaElement):
 
 
 class Media(UpdatableElement):
-    _primary_key = "code"
-    _entry_data_path = ("PostPage", 0, "graphql", "shortcode_media")
-    _base_url = "p/"
+    primary_key = "code"
+    entry_data_path = ("PostPage", 0, "graphql", "shortcode_media")
+    base_url = "p/"
 
     def __init__(self, code):
         self.id = None
@@ -117,7 +117,7 @@ class Media(UpdatableElement):
         self.likes = set()
         self.comments = set()
 
-    def _set_data(self, data):
+    def set_data(self, data):
         self.id = data["id"]
         self.code = data["shortcode"]
         if data["edge_media_to_caption"]["edges"]:
@@ -151,18 +151,18 @@ class Media(UpdatableElement):
 
 
 class Story(Element):
-    _primary_key = "id"
+    primary_key = "id"
 
     def __init__(self, id):
         self.id = id
 
 
 class Location(HasMediaElement):
-    _primary_key = "id"
-    _entry_data_path = ("LocationsPage", 0, "graphql", "location")
-    _base_url = "explore/locations/"
-    _media_path = ("location", "edge_location_to_media")
-    _media_query_hash = "ac38b90f0f3981c42092016a37c59bf7"
+    primary_key = "id"
+    entry_data_path = ("LocationsPage", 0, "graphql", "location")
+    base_url = "explore/locations/"
+    media_path = ("location", "edge_location_to_media")
+    media_query_hash = "ac38b90f0f3981c42092016a37c59bf7"
 
     def __init__(self, id):
         self.id = id
@@ -176,7 +176,7 @@ class Location(HasMediaElement):
         self.media = set()
         self.top_posts = set()
 
-    def _set_data(self, data):
+    def set_data(self, data):
         self.id = data["id"]
         self.slug = data["slug"]
         self.name = data["name"]
@@ -190,11 +190,11 @@ class Location(HasMediaElement):
 
 
 class Tag(HasMediaElement):
-    _primary_key = "name"
-    _entry_data_path = ("TagPage", 0, "graphql", "hashtag")
-    _base_url = "explore/tags/"
-    _media_path = ("hashtag", "edge_hashtag_to_media")
-    _media_query_hash = "ded47faa9a1aaded10161a2ff32abb6b"
+    primary_key = "name"
+    entry_data_path = ("TagPage", 0, "graphql", "hashtag")
+    base_url = "explore/tags/"
+    media_path = ("hashtag", "edge_hashtag_to_media")
+    media_query_hash = "ded47faa9a1aaded10161a2ff32abb6b"
 
     def __init__(self, name):
         self.name = name
@@ -203,7 +203,7 @@ class Tag(HasMediaElement):
         self.media = set()
         self.top_posts = set()
 
-    def _set_data(self, data):
+    def set_data(self, data):
         self.name = data["name"]
         self.media_count = data["edge_hashtag_to_media"]["count"]
         for node in data["edge_hashtag_to_top_posts"]["edges"]:
@@ -211,7 +211,7 @@ class Tag(HasMediaElement):
 
 
 class Comment(Element):
-    _primary_key = "id"
+    primary_key = "id"
 
     def __init__(self, id, media, owner, text, created_at):
         self.id = id

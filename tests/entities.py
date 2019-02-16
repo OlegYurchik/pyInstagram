@@ -4,19 +4,19 @@ from instaparser.entities import Account, Comment, Location, Media, Story, Tag
 
 
 def test_clear_cache_account():
-    account = Account("test")
+    Account("test")
     
     Account.clear_cache()
     
-    assert(Account._cache == dict())
+    assert(Account.cache == dict())
 
 
 def test_clear_cache_media():
-    media = Media("test")
+    Media("test")
     
     Media.clear_cache()
     
-    assert(Media._cache == dict())
+    assert(Media.cache == dict())
 
 
 def test_clear_cache_location():
@@ -24,34 +24,34 @@ def test_clear_cache_location():
     
     Location.clear_cache()
     
-    assert(Location._cache == dict())
+    assert(Location.cache == dict())
 
 
 def test_clear_cache_tag():
-    tag = Tag("test")
+    Tag("test")
 
     Tag.clear_cache()
     
-    assert(Tag._cache == dict())
+    assert(Tag.cache == dict())
 
 
 def test_clear_cache_comment():
     account = Account("test")
     media = Media("test")
-    comment = Comment(1488, media=media, owner=account, text="test",
+    Comment(1488, media=media, owner=account, text="test",
                       created_at=0)
     
     Media.clear_cache()
     Comment.clear_cache()
     
-    assert(Comment._cache == dict())
-    assert(Media._cache == dict())
+    assert(Comment.cache == dict())
+    assert(Media.cache == dict())
 
 
 def test_clear_cache_story():
-    account = Account("test")
-    story = Story("test")
+    Account("test")
+    Story("test")
     
     Story.clear_cache()
 
-    assert(Story._cache == dict())
+    assert(Story.cache == dict())

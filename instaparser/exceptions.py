@@ -22,10 +22,9 @@ class AuthException(InstagramException):
 
 
 class UnexpectedResponse(InstagramException):
-    def __init__(self, exception, url, data=None):
-        super().__init__("Get unexpected response from '%s' with data: %s\nError: %s" % (
+    def __init__(self, exception, url):
+        super().__init__("Get unexpected response from '%s'\nError: %s" % (
             url,
-            str(data),
             str(exception),
         ))
 
@@ -40,7 +39,7 @@ class NotUpdatedElement(InstagramException):
 
 class ExceptionManager:
     def __init__(self, repeats=1):
-        self._tree = {
+        self.tree = {
             "action": lambda exception, *args, **kwargs: (args, kwargs),
             "branch": {},
         }
@@ -51,14 +50,14 @@ class ExceptionManager:
         if not issubclass(key, Exception):
             raise TypeError("Key must be Exception type")
 
-        return self._search(key)[0]["action"]
+        return self.search(key)[0]["action"]
 
 
-    def _search(self, exception):
+    def search(self, exception):
         if not issubclass(exception, Exception):
             raise TypeError("'exception' must be Exception type")
 
-        current = self._tree
+        current = self.tree
         while True:
             for key, value in current["branch"].items():
                 if key == exception:
@@ -77,7 +76,7 @@ class ExceptionManager:
         if not callable(value):
             raise TypeError("Value must be function")
 
-        item, exists = self._search(key)
+        item, exists = self.search(key)
         if exists:
             item["action"] = value
         else:
@@ -96,11 +95,3 @@ class ExceptionManager:
                 raise exception
 
         return wrapper
-
-
-def http_response_handler(exception, *args, **kwargs):
-    if exception.response.status_code in (400, 429):
-        sleep(60)
-        return (args, kwargs)
-
-    raise exception

@@ -1,37 +1,40 @@
 import hashlib
+from instaparser.entities import (Account, Comment, Element, HasMediaElement,Media, Location, Story,
+                                  Tag, UpdatableElement)
+from instaparser.exceptions import (AuthException, ExceptionManager, InstagramException,
+                                    InternetException, UnexpectedResponse, NotUpdatedElement)
 import json
 import re
 import requests
 from requests.exceptions import HTTPError
 
-from instaparser.entities import (Account, Comment, Element, HasMediaElement,Media, Location, Story,
-                                  Tag, UpdatableElement)
-from instaparser.exceptions import (AuthException, ExceptionManager, http_response_handler,
-                                    InstagramException, InternetException, UnexpectedResponse,
-                                    NotUpdatedElement)
 
 exception_manager = ExceptionManager()
-exception_manager[InternetException] = http_response_handler
 
 
 class Agent:
-    def __init__(self, settings={}):
-        self._session = requests.Session()
+    def __init__(self, user_agent=None, settings=None):
+        if settings is None:
+            settings = dict()
+        self.user_agent = user_agent
+        self.session = requests.Session()
         
         self.update(settings=settings)
 
     @exception_manager.decorator
-    def update(self, obj=None, settings={}):
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+    def update(self, obj=None, settings=None):
         if not isinstance(obj, UpdatableElement) and not obj is None:
             raise TypeError("obj must be UpdatableElement type or None")
+        if settings is None:
+            settings = dict()
+        elif not isinstance(settings, dict):
+            raise TypeError("'settings' must be dict type")
         
         query = "https://www.instagram.com/"
         if not obj is None:
-            query += obj._base_url + getattr(obj, obj._primary_key)
+            query += obj.base_url + getattr(obj, obj.primary_key)
         
-        response = self._get_request(query, **settings)
+        response = self.get_request(query, **settings)
 
         try:
             match = re.search(
@@ -39,29 +42,29 @@ class Agent:
                 response.text,
             )
             data = json.loads(match.group(1))
-            self._rhx_gis = data["rhx_gis"]
-            self._csrf_token = data["config"]["csrf_token"]
+            self.rhx_gis = data["rhx_gis"]
+            self.csrf_token = data["config"]["csrf_token"]
             
             if obj is None:
                 return None
             
             data = data["entry_data"]
-            for key in obj._entry_data_path:
+            for key in obj.entry_data_path:
                 data=data[key]
-            obj._set_data(data)
+            obj.set_data(data)
             
             return data
         except (AttributeError, KeyError, ValueError) as exception:
-            raise UnexpectedResponse(exception, response.url, response.text)
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def get_media(self, obj, pointer=None, count=12, settings={}, limit=50):
+    def get_media(self, obj, pointer=None, count=12, limit=50, settings=None):
         if not isinstance(obj, HasMediaElement):
             raise TypeError("'obj' must be HasMediaElement type")
+        if not isinstance(pointer, str) and not pointer is None:
+            raise TypeError("'pointer' must be str type or None")
         if not isinstance(count, int):
             raise TypeError("'count' must be int type")
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
         if not isinstance(limit, int):
             raise TypeError("'limit' must be int type")
         
@@ -72,7 +75,7 @@ class Agent:
 
         if pointer is None:
             try:
-                data = data[obj._media_path[-1]]
+                data = data[obj.media_path[-1]]
                 
                 page_info = data["page_info"]
                 edges = data["edges"]
@@ -80,7 +83,7 @@ class Agent:
                 for index in range(min(len(edges), count)):
                     node = edges[index]["node"]
                     m = Media(node["shortcode"])
-                    m._set_data(node)
+                    m.set_data(node)
                     if isinstance(obj, Account):
                         m.likes_count = node["edge_media_preview_like"]["count"]
                         m.owner = obj
@@ -101,8 +104,7 @@ class Agent:
             except (ValueError, KeyError) as exception:
                 raise UnexpectedResponse(
                     exception,
-                    "https://www.instagram.com/" + obj._base_url + getattr(obj, obj._primary_key),
-                    data,
+                    "https://www.instagram.com/" + obj.base_url + getattr(obj, obj.primary_key),
                 )
 
         while True:
@@ -114,15 +116,15 @@ class Agent:
                 data["name"] = "id"
                 data["name_value"] = obj.id
 
-            response = self._graphql_request(
-                query_hash=obj._media_query_hash,
+            response = self.graphql_request(
+                query_hash=obj.media_query_hash,
                 variables=variables_string.format(**data),
                 settings=settings,
             )
             
             try:
                 data = response.json()["data"]
-                for key in obj._media_path:
+                for key in obj.media_path:
                     data = data[key]
                 page_info = data["page_info"]
                 edges = data["edges"]
@@ -130,7 +132,7 @@ class Agent:
                 for index in range(min(len(edges), count)):
                     node = edges[index]["node"]
                     m = Media(node["shortcode"])
-                    m._set_data(node)
+                    m.set_data(node)
                     if isinstance(obj, Account):
                         m.likes_count = node["edge_media_preview_like"]["count"]
                         m.owner = obj
@@ -150,16 +152,16 @@ class Agent:
                     return medias, pointer
                 
             except (ValueError, KeyError) as exception:
-                raise UnexpectedResponse(exception, response.url, response.text)
+                raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def get_likes(self, media, pointer=None, count=20, settings={}, limit=50):
+    def get_likes(self, media, pointer=None, count=20, limit=50, settings=None):
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
+        if not isinstance(pointer, str) and not pointer is None:
+            raise TypeError("'pointer' must be str type or None")
         if not isinstance(count, int):
             raise TypeError("'count' must be int type")
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
         if not isinstance(limit, int):
             raise TypeError("'limit' must be int type")
 
@@ -176,7 +178,7 @@ class Agent:
             if pointer:
                 data["after"] = pointer
 
-            response = self._graphql_request(
+            response = self.graphql_request(
                 query_hash="1cb6ec562846122743b61e492c85999f",
                 variables=variables_string.format(**data),
                 settings=settings,
@@ -210,16 +212,16 @@ class Agent:
                 else:
                     return likes, pointer
             except (ValueError, KeyError) as exception:
-                raise UnexpectedResponse(exception, response.url, response.text)
+                raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def get_comments(self, media, pointer=None, count=35, settings={}, limit=50):
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
-        if not isinstance(count, int):
-            raise TypeError("'count' must be int type")
+    def get_comments(self, media, pointer=None, count=35, limit=50, settings=None):
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
+        if not isinstance(pointer, str) and not pointer is None:
+            raise TypeError("'pointer' must be str type or None")
+        if not isinstance(count, int):
+            raise TypeError("'count' must be int type")
         if not isinstance(limit, int):
             raise TypeError("'limit' must be int type")
 
@@ -256,7 +258,7 @@ class Agent:
         while True:
             data = {"after": pointer, "code": media.code, "first": min(limit, count)}
 
-            response = self._graphql_request(
+            response = self.graphql_request(
                 query_hash="33ba35852cb50da46f5b5e889df7d159",
                 variables=variables_string.format(**data),
                 settings=settings,
@@ -288,14 +290,16 @@ class Agent:
                 else:
                     return comments, pointer
             except (ValueError, KeyError) as exception:
-                raise UnexpectedResponse(exception, response.url, response.text)
+                raise UnexpectedResponse(exception, response.url)
 
-    def _graphql_request(self, query_hash, variables, settings={}):
+    def graphql_request(self, query_hash, variables, settings=None):
         if not isinstance(query_hash, str):
             raise TypeError("'query_hash' must be str type")
         if not isinstance(variables, str):
             raise TypeError("'variables' must be str type")
-        if not isinstance(settings, dict):
+        if settings is None:
+            settings = dict()
+        elif not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
 
         if not "params" in settings:
@@ -304,36 +308,44 @@ class Agent:
             settings["params"]["query_hash"] = query_hash
 
         settings["params"]["variables"] = variables
-        gis = "%s:%s" % (self._rhx_gis, variables)
+        gis = "%s:%s" % (self.rhx_gis, variables)
         if not "headers" in settings:
             settings["headers"] = {"X-Instagram-GIS": hashlib.md5(gis.encode("utf-8")).hexdigest()}
         else:
             settings["headers"]["X-Instagram-GIS"] = hashlib.md5(gis.encode("utf-8")).hexdigest()
         settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
+        if not self.user_agent is None:
+            settings["headers"]["User-Agent"] = self.user_agent
 
         try:
-            response = self._get_request("https://www.instagram.com/graphql/query/", **settings)
+            response = self.get_request("https://www.instagram.com/graphql/query/", **settings)
             response.raise_for_status()
             return response
-        except HTTPError as e:
-            raise InternetException(e)
+        except (requests.exceptions.RequestException, ConnectionResetError) as exception:
+            raise InternetException(exception)
 
-    def _action_request(self, referer, url, data={}, settings={}):
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
-        if not isinstance(data, dict):
-            raise TypeError("'data' must be dict type")
+    def action_request(self, referer, url, data=None, settings=None):
         if not isinstance(referer, str):
             raise TypeError("'referer' must be str type")
         if not isinstance(url, str):
             raise TypeError("'url' must be str type")
+        if data is None:
+            data = dict()
+        if not isinstance(data, dict):
+            raise TypeError("'data' must be dict type or None")
+        if settings is None:
+            settings = dict()
+        elif not isinstance(settings, dict):
+            raise TypeError("'settings' must be dict type or None")
 
         headers = {
-            "referer": referer,
-            "x-csrftoken": self._csrf_token,
-            "x-instagram-ajax": "1",
-            "x-requested-with": "XMLHttpRequest",
+            "Referer": referer,
+            "X-CSRFToken": self.csrf_token,
+            "X-Instagram-Ajax": "1",
+            "X-Requested-With": "XMLHttpRequest",
         }
+        if not self.user_agent is None:
+            headers["User-Agent"] = self.user_agent
         if "headers" in settings:
             settings["headers"].update(headers)
         else:
@@ -343,47 +355,60 @@ class Agent:
         else:
             settings["data"] = data
 
-        response = self._post_request(url, **settings)
+        response = self.post_request(url, **settings)
         return response
 
-    def _get_request(self, *args, **kwargs):
+    def get_request(self, *args, **kwargs):
         try:
-            response = self._session.get(*args, **kwargs)
+            response = self.session.get(*args, **kwargs)
             response.raise_for_status()
             return response
-        except HTTPError as e:
-            raise InternetException(e)
+        except (requests.exceptions.RequestException, ConnectionResetError) as exception:
+            raise InternetException(exception)
 
-    def _post_request(self, *args, **kwargs):
+    def post_request(self, *args, **kwargs):
         try:
-            response = self._session.post(*args, **kwargs)
+            response = self.session.post(*args, **kwargs)
             response.raise_for_status()
             return response
-        except HTTPError as e:
-            raise InternetException(e)
+        except (requests.exceptions.RequestException, ConnectionResetError) as exception:
+            raise InternetException(exception)
 
 
 class AgentAccount(Account, Agent):
     @exception_manager.decorator
-    def __init__(self, login, password, settings={}):
-        if not isinstance(settings, dict):
+    def __init__(self, login, password, user_agent=None, settings=None):
+        if not isinstance(login, str):
+            raise TypeError("'login' must be str type")
+        if not isinstance(password, str):
+            raise TypeError("'password' must be str type")
+        if user_agent is None:
+            user_agent = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 " + \
+                         "Firefox/61.0"
+        elif not isinstance(user_agent, str):
+            raise TypeError("'user_agent' must be str type")
+        if settings is None:
+            settings = dict()
+        elif not isinstance(settings, dict):
             raise TypeError("'settings' must be dict type")
 
         Account.__init__(self, login)
-        Agent.__init__(self, settings=settings)
+        Agent.__init__(self, user_agent=user_agent, settings=settings)
 
         data = {"username": self.login, "password": password}
         
         if "headers" in settings:
-            settings["headers"]["X-CSRFToken"] = self._csrf_token
-            settings["headers"]["referer"] = "https://www.instagram.com/"
+            settings["headers"].update({
+                "X-CSRFToken": self.csrf_token,
+                "Referer": "https://www.instagram.com/",
+            })
         else:
             settings["headers"] = {
-                "X-CSRFToken": self._csrf_token,
-                "referer": "https://www.instagram.com/",
+                "X-CSRFToken": self.csrf_token,
+                "Referer": "https://www.instagram.com/",
             }
 
-        response = self._post_request(
+        response = self.post_request(
             "https://www.instagram.com/accounts/login/ajax/",
             data=data,
             **settings,
@@ -394,34 +419,34 @@ class AgentAccount(Account, Agent):
             if not data["authenticated"]:
                 raise AuthException(self.login) 
         except (ValueError, KeyError) as exception:
-            raise UnexpectedResponse(exception, response.url, response.text)
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def update(self, obj=None, settings={}):
+    def update(self, obj=None, settings=None):
         if obj is None:
             obj = self
-        return super().update(obj, settings)
+        return super().update(obj, settings=settings)
 
     @exception_manager.decorator
-    def get_media(self, obj=None, pointer=None, count=12, settings={}, limit=12):
+    def get_media(self, obj=None, pointer=None, count=12, limit=12, settings=None):
         if obj is None:
             obj=self
-        return super().get_media(obj, pointer, count, settings, limit)
+        return super().get_media(obj, pointer=pointer, count=count, limit=limit, settings=settings)
 
     @exception_manager.decorator
-    def get_follows(self, account=None, pointer=None, count=20, settings={}, limit=50):
+    def get_follows(self, account=None, pointer=None, count=20, limit=50, settings=None):
         if account is None:
             account = self
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+        if not isinstance(account, Account):
+            raise TypeError("'account' must be Account type or None")
+        if not isinstance(pointer, str) and not pointer is None:
+            raise TypeError("'pointer' must be str type or None")
         if not isinstance(count, int):
             raise TypeError("'count' must be int type")
-        if not isinstance(account, Account):
-            raise TypeError("'account' must be Account type")
         if not isinstance(count, int):
             raise TypeError("'limit' must be int type")
 
-        self.update(account, settings)
+        self.update(account, settings=settings)
 
         if pointer is None:
             variables_string = '{{"id":"{id}","first":{first}}}'
@@ -434,7 +459,7 @@ class AgentAccount(Account, Agent):
             if not pointer is None:
                 data["after"] = pointer
 
-            response = self._graphql_request(
+            response = self.graphql_request(
                 query_hash="58712303d941c6855d4e888c5f0cd22f",
                 variables=variables_string.format(**data),
                 settings=settings,
@@ -462,27 +487,27 @@ class AgentAccount(Account, Agent):
                     pointer = None
                 
                 if len(edges) < count and page_info["has_next_page"]:
-                    count = count-len(edges)
+                    count = count - len(edges)
                     variables_string = '{{"id":"{id}","first":{first},"after":"{after}"}}'
                 else:
                     return follows, pointer
             except (ValueError, KeyError) as exception:
-                raise UnexpectedResponse(exception, response.url, response.text)
+                raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def get_followers(self, account=None, pointer=None, count=20, settings={}, limit=50):
+    def get_followers(self, account=None, pointer=None, count=20, limit=50, settings=None):
         if account is None:
             account = self
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+        if not isinstance(account, Account):
+            raise TypeError("'account' must be Account type or None")
+        if not isinstance(pointer, str) and not pointer is None:
+            raise TypeError("'pointer' must be str type or None")
         if not isinstance(count, int):
             raise TypeError("'count' must be int type")
-        if not isinstance(account, Account):
-            raise TypeError("'account' must be Account type")
         if not isinstance(limit, int):
             raise TypeError("'limit' must be int type")
 
-        self.update(account, settings)
+        self.update(account, settings=settings)
         
         if pointer is None:
             variables_string = '{{"id":"{id}","first":{first}}}'
@@ -495,7 +520,7 @@ class AgentAccount(Account, Agent):
             if not pointer is None:
                 data["after"] = pointer
 
-            response = self._graphql_request(
+            response = self.graphql_request(
                 query_hash="37479f2b8209594dde7facb0d904896a",
                 variables=variables_string.format(**data),
                 settings=settings,
@@ -528,12 +553,12 @@ class AgentAccount(Account, Agent):
                 else:
                     return followers, pointer
             except (ValueError, KeyError) as exception:
-                raise UnexpectedResponse(exception, response.url, response.text)
+                raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def stories(self, settings={}):
+    def stories(self, settings=None):
         while True:
-            response = self._graphql_request(
+            response = self.graphql_request(
                 query_hash="60b755363b5c230111347a7a4e242001",
                 variables='{"only_stories":true}',
                 settings=settings,
@@ -543,12 +568,12 @@ class AgentAccount(Account, Agent):
                 data = response.json()["data"]["user"]["feed_reels_tray"]["edge_reels_tray_to_reel"]
                 return [Story(edge["node"]["id"]) for edge in data["edges"]]
             except (ValueError, KeyError) as exception:
-                raise UnexpectedResponse(exception, response.url, response.text)
+                raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def feed(self, pointer=None, count=12, settings={}, limit=50):
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+    def feed(self, pointer=None, count=12, limit=50, settings=None):
+        if not isinstance(pointer, str) and not pointer is None:
+            raise TypeError("'pointer' must be str type or None")
         if not isinstance(count, int):
             raise TypeError("'count' must be int type")
         if not isinstance(limit, int):
@@ -559,7 +584,7 @@ class AgentAccount(Account, Agent):
         feed = []
 
         while True:
-            response = self._graphql_request(
+            response = self.graphql_request(
                 query_hash="485c25657308f08317c1e4b967356828",
                 variables=variables_string.format(
                     after=pointer,
@@ -580,7 +605,7 @@ class AgentAccount(Account, Agent):
                         length -= 1
                         continue
                     m = Media(node["shortcode"])
-                    m._set_data(node)
+                    m.set_data(node)
                     feed.append(m)
                 
                 if page_info["has_next_page"]:
@@ -593,61 +618,61 @@ class AgentAccount(Account, Agent):
                 else:
                     return feed, pointer
             except (ValueError, KeyError) as exception:
-                raise UnexpectedResponse(exception, response.url, response.text)
+                raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def like(self, media, settings={}):
+    def like(self, media, settings=None):
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+        
         if media.id is None:
-            self.update(media)
+            self.update(media, settings=settings)
 
-        response = self._action_request(
+        response = self.action_request(
             referer="https://www.instagram.com/p/%s/" % media.code,
             url="https://www.instagram.com/web/likes/%s/like/" % media.id,
+            settings=settings,
         )
 
         try:
             return response.json()["status"] == "ok"
         except (ValueError, KeyError) as exception:
-            raise UnexpectedResponse(exception, response.url, response.text)
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def unlike(self, media, settings={}):
+    def unlike(self, media, settings=None):
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
-        if media.id is None:
-            self.update(media)
 
-        response = self._action_request(
+        if media.id is None:
+            self.update(media, settings=settings)
+
+        response = self.action_request(
             referer="https://www.instagram.com/p/%s/" % media.code,
             url="https://www.instagram.com/web/likes/%s/unlike/" % media.id,
+            settings=settings,
         )
 
         try:
             return response.json()["status"] == "ok"
         except (ValueError, KeyError) as exception:
-            raise UnexpectedResponse(exception, response.url, response.text)
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def add_comment(self, media, text, settings={}):
+    def add_comment(self, media, text, settings=None):
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
         if not isinstance(text, str):
             raise TypeError("'text' must be str type")
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
-        if media.id is None:
-            self.update(media)
 
-        response = self._action_request(
+        if media.id is None:
+            self.update(media, settings=settings)
+
+        response = self.action_request(
             referer="https://www.instagram.com/p/%s/" % media.code,
             url="https://www.instagram.com/web/comments/%s/add/" % media.id,
             data={"comment_text": text},
+            settings=settings,
         )
 
         try:
@@ -663,23 +688,23 @@ class AgentAccount(Account, Agent):
                 return comment
             return None
         except (ValueError, KeyError) as exception:
-            raise UnexpectedResponse(exception, response.url, response.text)
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def delete_comment(self, comment, settings={}):
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+    def delete_comment(self, comment, settings=None):
         if not isinstance(comment, Comment):
             raise TypeError("'comment' must be Comment type")
-        if comment.media.id is None:
-            self.update(comment.media)
 
-        response = self._action_request(
+        if comment.media.id is None:
+            self.update(comment.media, settings=settings)
+
+        response = self.action_request(
             referer="https://www.instagram.com/p/%s/" % comment.media.code,
             url="https://www.instagram.com/web/comments/%s/delete/%s/" % (
                 comment.media.id,
                 comment.id,
             ),
+            settings=settings,
         )
 
         try:
@@ -689,42 +714,42 @@ class AgentAccount(Account, Agent):
             else:
                 return False
         except (ValueError, KeyError) as exception:
-            raise UnexpectedResponse(exception, response.url, response.text)
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def follow(self, account, settings={}):
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+    def follow(self, account, settings=None):
         if not isinstance(account, Account):
             raise TypeError("'account' must be Account type")
-        if account.id is None:
-            self.update(account)
 
-        response = self._action_request(
+        if account.id is None:
+            self.update(account, settings=settings)
+
+        response = self.action_request(
             referer="https://www.instagram.com/%s" % account.login,
             url="https://www.instagram.com/web/friendships/%s/follow/" % account.id,
+            settings=settings,
         )
 
         try:
             return response.json()["status"] == "ok"
         except (ValueError, KeyError) as exception:
-            raise UnexpectedResponse(exception, response.url, response.text)
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def unfollow(self, account, settings={}):
-        if not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+    def unfollow(self, account, settings=None):
         if not isinstance(account, Account):
             raise TypeError("'account' must be Account type")
-        if account.id is None:
-            self.update(account)
 
-        response = self._action_request(
+        if account.id is None:
+            self.update(account, settings=settings)
+
+        response = self.action_request(
             referer="https://www.instagram.com/%s" % account.login,
             url="https://www.instagram.com/web/friendships/%s/unfollow/" % account.id,
+            settings=settings,
         )
 
         try:
             return response.json()["status"] == "ok"
         except (ValueError, KeyError) as exception:
-            raise UnexpectedResponse(exception, response.url, response.text)
+            raise UnexpectedResponse(exception, response.url)

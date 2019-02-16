@@ -7,7 +7,7 @@ setup(
     
     author = "Oleg Yurchik",
     author_email = "oleg.yurchik@protonmail.com",
-    url = "https://github.com/OlegYurchik/InstaParser",
+    url = "https://github.com/OlegYurchik/pyInstaParser",
     
     description = "",
     long_description = open(join(dirname(__file__), 'README.md')).read(),

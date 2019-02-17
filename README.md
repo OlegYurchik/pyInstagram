@@ -6,6 +6,10 @@ https://www.python.org/)
 [![paypal](https://img.shields.io/badge/-PayPal-blue.svg)](
 https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=YHRDQM5C3MJ3U)
 
+### Important Message
+
+I want to create pyInstaParser with async code. Do you need it? If you have any minds about it, please, tell me it in https://github.com/OlegYurchik/pyInstaParser/issues/35
+
 ### What's new?
 
 * Version 1.1

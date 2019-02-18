@@ -8,7 +8,8 @@ https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=YHRDQM5C3MJ
 
 ### Important Message
 
-I want to create pyInstaParser with async code. Do you need it? If you have any minds about it, please, tell me it in https://github.com/OlegYurchik/pyInstaParser/issues/35
+I want to create pyInstaParser with async code. Do you need it? If you have any minds about it,
+please, tell me it in https://github.com/OlegYurchik/pyInstaParser/issues/35
 
 ### What's new?
 
@@ -90,7 +91,7 @@ agent = Agent()
 account = Account("zuck")
 
 media1, pointer = agent.get_media(account)
-media2, pointer = agent.get_media(account, count=50, pointer=pointer)
+media2, pointer = agent.get_media(account, pointer=pointer, count=50, delay=1)
 ```
 
 This code allows you to download brief information about the first media from Mark Zuckerberg's
@@ -279,7 +280,7 @@ agent = Agent()
 
 What anonymous agent can do?
 
-* update(self, obj=None, settings={})
+* update(self, obj=None, settings=None)
 
 This method updates the information about the transferred entity
 
@@ -287,7 +288,7 @@ obj - entity for updating (Account, Media, Location, Tag)
 
 settings - dict with settings for connection
 
-* get_media(self, obj, pointer=None, count=12, settings={}, limit=50)
+* get_media(self, obj, pointer=None, count=12, limit=50, delay=0, settings=None)
 
 This metod return list of entity media and pointer for next page with medias
 
@@ -297,19 +298,29 @@ pointer - pointer for next page with medias
 
 count - number of last media records
 
-settings - dict with settings for connection
-
 limit - limit of medias in one request
 
-* get_likes(self, media, settings={})
+delay - delay between requests
+
+settings - dict with settings for connection
+
+* get_likes(self, media, pointer=None, count=20, limit=50, delay=0, settings=None)
 
 This metod return list of media likes
 
 media - media entity
 
+pointer - pointer for next page with likes
+
+count - number of last like records
+
+limit - limit of likes in one request
+
+delay - delay between requests
+
 settings - dict with settings for connection
 
-* get_comments(self, media, pointer=None, count=35, settings={}, limit=50)
+* get_comments(self, media, pointer=None, count=35, settings=None, limit=50)
 
 This metod return list of media comments and pointer for next page with comments
 
@@ -319,9 +330,11 @@ pointer - pointer for next page with comments
 
 count - number of last comments records
 
-settings - dict with settings for connection
+delay - delay between requests
 
 limit - limit of comments in one request
+
+settings - dict with settings for connection
 
 ## Authorized agent
 
@@ -337,7 +350,7 @@ agent = AgentAccount("username", "password")
 
 What authorized agent can do?
 
-* update(self, obj=None, settings={})
+* update(self, obj=None, settings=None)
 
 This method updates the information about the transferred entity
 
@@ -345,7 +358,7 @@ obj - entity for updating (Account, Media, Location, Tag)
 
 settings - dict with settings for connection
 
-* get_media(self, obj, pointer=None, count=12, settings={}, limit=12)
+* get_media(self, obj, pointer=None, count=12, limit=12, delay=0, settings=None)
 
 This metod return list of entity media and pointer for next page with medias
 
@@ -355,11 +368,13 @@ pointer - pointer for next page with medias
 
 count - number of last media records
 
+limit - limit of comments in one request
+
+delay - delay between requests
+
 settings - dict with settings for connection
 
-limit - limit of medias in one request
-
-* get_likes(self, media, pointer=None, count=20, settings={}, limit=50)
+* get_likes(self, media, pointer=None, count=20, limit=30, delay=0, settings=None)
 
 This metod return list of media likes and pointer for next page with likes
 
@@ -369,11 +384,13 @@ pointer - pointer for next page with likes
 
 count - number of last likes records
 
-settings - dict with settings for connection
-
 limit - limit of likes in one request
 
-* get_follows(self, account=None, pointer=None, count=20, settings={}, limit=50)
+delay - delay between requests
+
+settings - dict with settings for connection
+
+* get_follows(self, account=None, pointer=None, count=20, limit=50, delay=0, settings=None)
 
 This metod return list of account follows and pointer for next page with follows
 
@@ -383,11 +400,13 @@ pointer - pointer for next page with follows
 
 count - number of last follows records
 
-settings - dict with settings for connection
-
 limit - limit of follows in one request
 
-* get_followers(self, account=None, pointer=None, count=20, settings={}, limit=50)
+delay - delay between requests
+
+settings - dict with settings for connection
+
+* get_followers(self, account=None, pointer=None, count=20, limit=50, delay=0, settings=None)
 
 This metod return list of followers follows and pointer for next page with followers
 
@@ -397,11 +416,13 @@ pointer - pointer for next page with followers
 
 count - number of last followers records
 
-settings - dict with settings for connection
-
 limit - limit of followers in one request
 
-* feed(self, pointer=None, count=12, settings={}, limit=50)
+delay - delay between requests
+
+settings - dict with settings for connection
+
+* feed(self, pointer=None, count=12, limit=50, delay=0, settings=None)
 
 This metod return feed and pointer for next page
 
@@ -409,17 +430,19 @@ pointer - pointer for next page
 
 count - number of last records
 
+limit - limit of followers in one request
+
+delay - delay between requests
+
 settings - dict with settings for connection
 
-limit - limit of medias in one request
-
-* stories(self, settings={})
+* stories(self, settings=None)
 
 This method return all stories in feed
 
 settings - dict with settings for connection
 
-* like(self, media, settings={})
+* like(self, media, settings=None)
 
 This method like media
 
@@ -427,7 +450,7 @@ media - media entity
 
 settings - dict with settings for connection
 
-* unlike(self, media, settings={})
+* unlike(self, media, settings=None)
 
 This method unlike media
 
@@ -435,7 +458,7 @@ media - media entity
 
 settings - dict with settings for connection
 
-* add_comment(self, media, text, settings={})
+* add_comment(self, media, text, settings=None)
 
 This method create a comment under media
 
@@ -445,7 +468,7 @@ text - text for comment
 
 settings - dict with settings for connection
 
-* delete_comment(self, comment, settings={})
+* delete_comment(self, comment, settings=None)
 
 This method delete a comment
 
@@ -453,7 +476,7 @@ comment - comment for deleting
 
 settings - dict with settings for connection
 
-* follow(self, account, settings={})
+* follow(self, account, settings=None)
 
 This method follow to user
 
@@ -461,7 +484,7 @@ account - account for following
 
 settings - dict with settings for connection
 
-* unfollow(self, account, settings={})
+* unfollow(self, account, settings=None)
 
 This method unfollow to user
 

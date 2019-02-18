@@ -7,6 +7,7 @@ import json
 import re
 import requests
 from requests.exceptions import HTTPError
+from time import sleep
 
 
 exception_manager = ExceptionManager()
@@ -14,8 +15,6 @@ exception_manager = ExceptionManager()
 
 class Agent:
     def __init__(self, user_agent=None, settings=None):
-        if settings is None:
-            settings = dict()
         self.user_agent = user_agent
         self.session = requests.Session()
         
@@ -58,7 +57,7 @@ class Agent:
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def get_media(self, obj, pointer=None, count=12, limit=50, settings=None):
+    def get_media(self, obj, pointer=None, count=12, limit=50, delay=0, settings=None):
         if not isinstance(obj, HasMediaElement):
             raise TypeError("'obj' must be HasMediaElement type")
         if not isinstance(pointer, str) and not pointer is None:
@@ -67,7 +66,9 @@ class Agent:
             raise TypeError("'count' must be int type")
         if not isinstance(limit, int):
             raise TypeError("'limit' must be int type")
-        
+        if not isinstance(delay, (int, float)):
+            raise TypeError("'delay' must be int or float type")
+
         data = self.update(obj, settings)
         
         variables_string = '{{"{name}":"{name_value}","first":{first},"after":"{after}"}}'
@@ -92,10 +93,9 @@ class Agent:
                     
                     obj.media.add(m)
                     medias.append(m)
-                
-                if page_info["has_next_page"]:
-                    pointer = page_info["end_cursor"]
-                
+
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
+
                 if len(edges) < count and page_info["has_next_page"]:
                     count = count - len(edges)
                 else:
@@ -140,14 +140,12 @@ class Agent:
                         m.likes_count = node["edge_liked_by"]
                     obj.media.add(m)
                     medias.append(m)
-                
-                if page_info["has_next_page"]:
-                    pointer = page_info["end_cursor"]
-                else:
-                    pointer = None
-                
+
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
+
                 if len(edges) < count and page_info["has_next_page"]:
                     count = count - len(edges)
+                    sleep(delay)
                 else:
                     return medias, pointer
                 
@@ -155,7 +153,7 @@ class Agent:
                 raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def get_likes(self, media, pointer=None, count=20, limit=50, settings=None):
+    def get_likes(self, media, pointer=None, count=20, limit=50, delay=0, settings=None):
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
         if not isinstance(pointer, str) and not pointer is None:
@@ -164,6 +162,8 @@ class Agent:
             raise TypeError("'count' must be int type")
         if not isinstance(limit, int):
             raise TypeError("'limit' must be int type")
+        if not isinstance(delay, (int, float)):
+            raise TypeError("'delay' must be int or float type")
 
         self.update(media, settings)
 
@@ -199,23 +199,21 @@ class Agent:
                     account.full_name = node["full_name"]
                     media.likes.add(account)
                     likes.append(account)
-                
-                if page_info["has_next_page"]:
-                    pointer = page_info["end_cursor"]
-                else:
-                    pointer = None
+
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
 
                 if len(edges) < count and page_info["has_next_page"]:
                     count = count-len(edges)
                     variables_string = \
                         '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
+                    sleep(delay)
                 else:
                     return likes, pointer
             except (ValueError, KeyError) as exception:
                 raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def get_comments(self, media, pointer=None, count=35, limit=50, settings=None):
+    def get_comments(self, media, pointer=None, count=35, limit=50, delay=0, settings=None):
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
         if not isinstance(pointer, str) and not pointer is None:
@@ -224,6 +222,8 @@ class Agent:
             raise TypeError("'count' must be int type")
         if not isinstance(limit, int):
             raise TypeError("'limit' must be int type")
+        if not isinstance(delay, (int, float)):
+            raise TypeError("'delay' must be int or float type")
 
         data = self.update(media, settings)
 
@@ -243,10 +243,9 @@ class Agent:
                                 created_at=node["created_at"])
                     media.comments.add(c)
                     comments.append(c)
-                
-                if page_info["has_next_page"]:
-                    pointer = page_info["end_cursor"]
-                
+
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
+
                 if len(edges) < count and not pointer is None:
                     count = count-len(edges)
                 else:
@@ -280,13 +279,11 @@ class Agent:
                     media.comments.add(c)
                     comments.append(c)
                 
-                if page_info["has_next_page"]:
-                    pointer = page_info["end_cursor"]
-                else:
-                    pointer = None
-                    
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
+
                 if len(edges) < count and page_info["has_next_page"]:
                     count = count-len(edges)
+                    sleep(delay)
                 else:
                     return comments, pointer
             except (ValueError, KeyError) as exception:
@@ -428,13 +425,14 @@ class AgentAccount(Account, Agent):
         return super().update(obj, settings=settings)
 
     @exception_manager.decorator
-    def get_media(self, obj=None, pointer=None, count=12, limit=12, settings=None):
+    def get_media(self, obj=None, pointer=None, count=12, limit=12, delay=0, settings=None):
         if obj is None:
-            obj=self
-        return super().get_media(obj, pointer=pointer, count=count, limit=limit, settings=settings)
+            obj = self
+        return super().get_media(obj, pointer=pointer, count=count, limit=limit, delay=delay,
+                                 settings=settings)
 
     @exception_manager.decorator
-    def get_follows(self, account=None, pointer=None, count=20, limit=50, settings=None):
+    def get_follows(self, account=None, pointer=None, count=20, limit=50, delay=0, settings=None):
         if account is None:
             account = self
         if not isinstance(account, Account):
@@ -445,6 +443,8 @@ class AgentAccount(Account, Agent):
             raise TypeError("'count' must be int type")
         if not isinstance(count, int):
             raise TypeError("'limit' must be int type")
+        if not isinstance(delay, (int, float)):
+            raise TypeError("'delay' must be int or float type")
 
         self.update(account, settings=settings)
 
@@ -481,21 +481,19 @@ class AgentAccount(Account, Agent):
                     account.follows.add(a)
                     follows.append(a)
                 
-                if page_info["has_next_page"]:
-                    pointer = page_info["end_cursor"]
-                else:
-                    pointer = None
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
                 
                 if len(edges) < count and page_info["has_next_page"]:
                     count = count - len(edges)
                     variables_string = '{{"id":"{id}","first":{first},"after":"{after}"}}'
+                    sleep(delay)
                 else:
                     return follows, pointer
             except (ValueError, KeyError) as exception:
                 raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def get_followers(self, account=None, pointer=None, count=20, limit=50, settings=None):
+    def get_followers(self, account=None, pointer=None, count=20, limit=50, delay=0, settings=None):
         if account is None:
             account = self
         if not isinstance(account, Account):
@@ -506,6 +504,8 @@ class AgentAccount(Account, Agent):
             raise TypeError("'count' must be int type")
         if not isinstance(limit, int):
             raise TypeError("'limit' must be int type")
+        if not isinstance(delay, (int, float)):
+            raise TypeError("'delay' must be int or float type")
 
         self.update(account, settings=settings)
         
@@ -542,14 +542,12 @@ class AgentAccount(Account, Agent):
                     account.followers.add(a)
                     followers.append(a)
                 
-                if page_info["has_next_page"]:
-                    pointer = page_info["end_cursor"]
-                else:
-                    pointer = None
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
                 
                 if len(edges) < count and page_info["has_next_page"]:
-                    count = count-len(edges)
+                    count = count - len(edges)
                     variables_string = '{{"id":"{id}","first":{first},"after":"{after}"}}'
+                    sleep(delay)
                 else:
                     return followers, pointer
             except (ValueError, KeyError) as exception:
@@ -557,27 +555,28 @@ class AgentAccount(Account, Agent):
 
     @exception_manager.decorator
     def stories(self, settings=None):
-        while True:
-            response = self.graphql_request(
-                query_hash="60b755363b5c230111347a7a4e242001",
-                variables='{"only_stories":true}',
-                settings=settings,
-            )
+        response = self.graphql_request(
+            query_hash="60b755363b5c230111347a7a4e242001",
+            variables='{"only_stories":true}',
+            settings=settings,
+        )
 
-            try:
-                data = response.json()["data"]["user"]["feed_reels_tray"]["edge_reels_tray_to_reel"]
-                return [Story(edge["node"]["id"]) for edge in data["edges"]]
-            except (ValueError, KeyError) as exception:
-                raise UnexpectedResponse(exception, response.url)
+        try:
+            data = response.json()["data"]["user"]["feed_reels_tray"]["edge_reels_tray_to_reel"]
+            return [Story(edge["node"]["id"]) for edge in data["edges"]]
+        except (ValueError, KeyError) as exception:
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def feed(self, pointer=None, count=12, limit=50, settings=None):
+    def feed(self, pointer=None, count=12, limit=50, delay=0, settings=None):
         if not isinstance(pointer, str) and not pointer is None:
             raise TypeError("'pointer' must be str type or None")
         if not isinstance(count, int):
             raise TypeError("'count' must be int type")
         if not isinstance(limit, int):
             raise TypeError("'limit' must be int type")
+        if not isinstance(delay, (int, float)):
+            raise TypeError("'delay' must be int or float type")
 
         variables_string = '{{"fetch_media_item_count":{first},"fetch_media_item_cursor":"{after}",\
             "fetch_comment_count":4,"fetch_like":10,"has_stories":false}}'
@@ -608,13 +607,11 @@ class AgentAccount(Account, Agent):
                     m.set_data(node)
                     feed.append(m)
                 
-                if page_info["has_next_page"]:
-                    pointer = page_info["end_cursor"]
-                else:
-                    pointer = None
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
                 
                 if length < count and page_info["has_next_page"]:
-                    count = count-length
+                    count -= length
+                    sleep(delay)
                 else:
                     return feed, pointer
             except (ValueError, KeyError) as exception:

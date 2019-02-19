@@ -1,7 +1,7 @@
 import pytest
 from random import randint, choice
 
-from instaparser.agents import Agent
+from instaparser.agents import Agent, AsyncAgent
 from instaparser.entities import Account, Media, Location, Tag
 
 from tests.settings import accounts, locations, photos, photo_sets, tags, videos
@@ -13,9 +13,19 @@ def test_update():
     
     anon.update()
     
-    assert(not getattr(anon, "rhx_gis", None) is None)
-    assert(not getattr(anon, "csrf_token", None) is None)
+    assert not getattr(anon, "rhx_gis", None) is None
+    assert not getattr(anon, "csrf_token", None) is None
 
+
+@pytest.mark.asyncio
+async def test_async_update(event_loop):
+    anon = AsyncAgent()
+    await anon.__ainit__()
+
+    await anon.update()
+
+    assert not getattr(anon, "rhx_gis", None) is None
+    assert not getattr(anon, "csrf_token", None) is None
 
 
 @pytest.mark.parametrize("username", accounts)
@@ -25,18 +35,18 @@ def test_update_account(username):
     
     data = anon.update(account)
     
-    assert(not data is None)
-    assert(not account.id is None)
-    assert(not account.full_name is None)
-    assert(not account.profile_pic_url is None)
-    assert(not account.profile_pic_url_hd is None)
-    assert(not account.biography is None)
-    assert(not account.follows_count is None)
-    assert(not account.followers_count is None)
-    assert(not account.media_count is None)
-    assert(not account.is_private is None)
-    assert(not account.is_verified is None)
-    assert(not account.country_block is None)
+    assert not data is None
+    assert not account.id is None
+    assert not account.full_name is None
+    assert not account.profile_pic_url is None
+    assert not account.profile_pic_url_hd is None
+    assert not account.biography is None
+    assert not account.follows_count is None
+    assert not account.followers_count is None
+    assert not account.media_count is None
+    assert not account.is_private is None
+    assert not account.is_verified is None
+    assert not account.country_block is None
     
     Account.clear_cache()
 
@@ -46,9 +56,9 @@ def test_update_photo(shortcode):
     anon = Agent()
     photo = Media(shortcode)
 
-    data = anon.update(photo)
+    anon.update(photo)
 
-    assert(not photo.is_video)
+    assert not photo.is_video
 
     Media.clear_cache()
 
@@ -58,9 +68,9 @@ def test_update_photo_set(shortcode):
     anon = Agent()
     photo_set = Media(shortcode)
     
-    data = anon.update(photo_set)
+    anon.update(photo_set)
     
-    assert(not photo_set.is_video)
+    assert not photo_set.is_video
     
     Media.clear_cache()
 
@@ -70,9 +80,9 @@ def test_update_video(shortcode):
     anon = Agent()
     video = Media(shortcode)
     
-    data = anon.update(video)
+    anon.update(video)
     
-    assert(video.is_video)
+    assert video.is_video
     
     Media.clear_cache()
 
@@ -82,7 +92,7 @@ def test_update_location(id):
     anon = Agent()
     location = Location(id)
     
-    data = anon.update(location)
+    anon.update(location)
     
     Location.clear_cache()
 
@@ -92,7 +102,7 @@ def test_update_tag(name):
     anon = Agent()
     tag = Tag(name)
     
-    data = anon.update(tag)
+    anon.update(tag)
     
     Tag.clear_cache()
 
@@ -105,8 +115,8 @@ def test_get_media_account(count, username):
     
     data, pointer = anon.get_media(account, count=count)
 
-    assert(min(account.media_count, count) == len(data))
-    assert((pointer is None) == (account.media_count <= count))
+    assert min(account.media_count, count) == len(data)
+    assert (pointer is None) == (account.media_count <= count)
 
     Account.clear_cache()
     Media.clear_cache()
@@ -119,8 +129,8 @@ def test_get_media_location(count, id):
     
     data, pointer = anon.get_media(location, count=count)
 
-    assert(min(location.media_count, count) == len(data))
-    assert((pointer is None) == (location.media_count <= count))
+    assert min(location.media_count, count) == len(data)
+    assert (pointer is None) == (location.media_count <= count)
 
     Location.clear_cache()
     Media.clear_cache()
@@ -133,8 +143,8 @@ def test_get_media_tag(count, name):
     
     data, pointer = anon.get_media(tag, count=count)
 
-    assert(min(tag.media_count, count) == len(data))
-    assert((pointer is None) == (tag.media_count <= count))
+    assert min(tag.media_count, count) == len(data)
+    assert (pointer is None) == (tag.media_count <= count)
 
     Tag.clear_cache()
     Media.clear_cache()
@@ -145,9 +155,9 @@ def test_get_likes(shortcode):
     anon = Agent()
     media = Media(shortcode)
     
-    data, pointer = anon.get_likes(media)
+    data, _ = anon.get_likes(media)
     
-    assert(media.likes_count >= len(data))
+    assert media.likes_count >= len(data)
 
     Media.clear_cache()
 
@@ -161,8 +171,8 @@ def test_get_comments(count, shortcode):
     
     data, pointer = anon.get_comments(media, count=count)
     
-    assert(min(media.comments_count, count) == len(data))
-    assert((pointer is None) == (media.likes_count <= count))
+    assert min(media.comments_count, count) == len(data)
+    assert (pointer is None) == (media.likes_count <= count)
 
     Media.clear_cache()
 
@@ -174,11 +184,11 @@ def test_get_media_account_pointer(count, username):
     pointer = None
     data = []
     
-    for i in range(count):
+    for _ in range(count):
         tmp, pointer = anon.get_media(account, pointer=pointer)
         data.extend(tmp)
 
-    assert((pointer is None) == (account.media_count <= count))
+    assert (pointer is None) == (account.media_count <= count)
 
     Account.clear_cache()
     Media.clear_cache()
@@ -191,11 +201,11 @@ def test_get_media_location_pointer(count, id):
     pointer = None
     data = []
     
-    for i in range(count):
+    for _ in range(count):
         tmp, pointer = anon.get_media(location, pointer=pointer)
         data.extend(tmp)
 
-    assert((pointer is None) == (location.media_count <= count))
+    assert (pointer is None) == (location.media_count <= count)
 
     Location.clear_cache()
     Media.clear_cache()
@@ -208,11 +218,11 @@ def test_get_media_tag_pointer(count,name):
     pointer = None
     data = []
     
-    for i in range(count):
+    for _ in range(count):
         tmp, pointer = anon.get_media(tag, pointer=pointer)
         data.extend(tmp)
 
-    assert((pointer is None) == (tag.media_count <= count))
+    assert (pointer is None) == (tag.media_count <= count)
 
     Tag.clear_cache()
     Media.clear_cache()
@@ -225,10 +235,10 @@ def test_get_comments_pointer(count, shortcode):
     pointer = None
     data = []
     
-    for i in range(count):
+    for _ in range(count):
         tmp, pointer = anon.get_comments(media, pointer=pointer)
         data.extend(tmp)
     
-    assert((pointer is None) == (media.likes_count <= count))
+    assert (pointer is None) == (media.likes_count <= count)
 
     Media.clear_cache()

@@ -1,6 +1,3 @@
-from time import sleep
-
-
 class InstagramException(Exception):
     pass
 

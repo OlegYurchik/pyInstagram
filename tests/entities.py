@@ -8,7 +8,7 @@ def test_clear_cache_account():
     
     Account.clear_cache()
     
-    assert(Account.cache == dict())
+    assert Account.cache == dict()
 
 
 def test_clear_cache_media():
@@ -16,7 +16,7 @@ def test_clear_cache_media():
     
     Media.clear_cache()
     
-    assert(Media.cache == dict())
+    assert Media.cache == dict()
 
 
 def test_clear_cache_location():
@@ -24,7 +24,7 @@ def test_clear_cache_location():
     
     Location.clear_cache()
     
-    assert(Location.cache == dict())
+    assert Location.cache == dict()
 
 
 def test_clear_cache_tag():
@@ -32,20 +32,19 @@ def test_clear_cache_tag():
 
     Tag.clear_cache()
     
-    assert(Tag.cache == dict())
+    assert Tag.cache == dict()
 
 
 def test_clear_cache_comment():
     account = Account("test")
     media = Media("test")
-    Comment(1488, media=media, owner=account, text="test",
-                      created_at=0)
+    Comment(1488, media=media, owner=account, text="test", created_at=0)
     
     Media.clear_cache()
     Comment.clear_cache()
     
-    assert(Comment.cache == dict())
-    assert(Media.cache == dict())
+    assert Comment.cache == dict()
+    assert Media.cache == dict()
 
 
 def test_clear_cache_story():
@@ -54,4 +53,4 @@ def test_clear_cache_story():
     
     Story.clear_cache()
 
-    assert(Story.cache == dict())
+    assert Story.cache == dict()

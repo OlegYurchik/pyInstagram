@@ -1,3 +1,5 @@
+import aiohttp
+import asyncio
 import hashlib
 from instaparser.entities import (Account, Comment, Element, HasMediaElement,Media, Location, Story,
                                   Tag, UpdatableElement)
@@ -15,6 +17,8 @@ exception_manager = ExceptionManager()
 
 class Agent:
     def __init__(self, user_agent=None, settings=None):
+        if isinstance(user_agent, str):
+            raise TypeError("'user_agent' must be str type")
         self.user_agent = user_agent
         self.session = requests.Session()
         
@@ -69,7 +73,7 @@ class Agent:
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        data = self.update(obj, settings)
+        data = self.update(obj, settings=settings)
         
         variables_string = '{{"{name}":"{name_value}","first":{first},"after":"{after}"}}'
         medias = []
@@ -165,7 +169,7 @@ class Agent:
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        self.update(media, settings)
+        self.update(media, settings=settings)
 
         if pointer:
             variables_string = '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
@@ -225,7 +229,7 @@ class Agent:
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        data = self.update(media, settings)
+        data = self.update(media, settings=settings)
 
         comments = []
 
@@ -282,7 +286,7 @@ class Agent:
                 pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
 
                 if len(edges) < count and page_info["has_next_page"]:
-                    count = count-len(edges)
+                    count = count - len(edges)
                     sleep(delay)
                 else:
                     return comments, pointer
@@ -314,12 +318,7 @@ class Agent:
         if not self.user_agent is None:
             settings["headers"]["User-Agent"] = self.user_agent
 
-        try:
-            response = self.get_request("https://www.instagram.com/graphql/query/", **settings)
-            response.raise_for_status()
-            return response
-        except (requests.exceptions.RequestException, ConnectionResetError) as exception:
-            raise InternetException(exception)
+        return self.get_request("https://www.instagram.com/graphql/query/", **settings)
 
     def action_request(self, referer, url, data=None, settings=None):
         if not isinstance(referer, str):
@@ -370,6 +369,365 @@ class Agent:
             return response
         except (requests.exceptions.RequestException, ConnectionResetError) as exception:
             raise InternetException(exception)
+
+
+class AsyncAgent:
+    async def __ainit__(self, user_agent=None, settings=None):
+        if isinstance(user_agent, str):
+            raise TypeError("'user_agent' must be str type")
+        self.user_agent = user_agent
+        self.session = aiohttp.ClientSession(raise_for_status=True)
+
+        await self.update(settings=settings)
+
+    @exception_manager.decorator
+    async def update(self, obj=None, settings=None):
+        if not isinstance(obj, UpdatableElement) and not obj is None:
+            raise TypeError("obj must be UpdatableElement type or None")
+        if settings is None:
+            settings = dict()
+        elif not isinstance(settings, dict):
+            raise TypeError("'settings' must be dict type")
+        
+        query = "https://www.instagram.com/"
+        if not obj is None:
+            query += obj.base_url + getattr(obj, obj.primary_key)
+        
+        response = await self.get_request(query, **settings)
+
+        try:
+            match = re.search(
+                r"<script[^>]*>\s*window._sharedData\s*=\s*((?!<script>).*)\s*;\s*</script>",
+                response.text(),
+            )
+            data = json.loads(match.group(1))
+            self.rhx_gis = data["rhx_gis"]
+            self.csrf_token = data["config"]["csrf_token"]
+            
+            if obj is None:
+                return None
+            
+            data = data["entry_data"]
+            for key in obj.entry_data_path:
+                data=data[key]
+            obj.set_data(data)
+            
+            return data
+        except (AttributeError, KeyError, ValueError) as exception:
+            raise UnexpectedResponse(exception, response.url)
+
+    @exception_manager.decorator
+    async def get_media(self, obj, pointer=None, count=12, limit=50, delay=0, settings=None):
+        if not isinstance(obj, HasMediaElement):
+            raise TypeError("'obj' must be HasMediaElement type")
+        if not isinstance(pointer, str) and not pointer is None:
+            raise TypeError("'pointer' must be str type or None")
+        if not isinstance(count, int):
+            raise TypeError("'count' must be int type")
+        if not isinstance(limit, int):
+            raise TypeError("'limit' must be int type")
+        if not isinstance(delay, (int, float)):
+            raise TypeError("'delay' must be int or float type")
+
+        data = await self.update(obj, settings=settings)
+        
+        variables_string = '{{"{name}":"{name_value}","first":{first},"after":"{after}"}}'
+        medias = []
+
+        if pointer is None:
+            try:
+                data = data[obj.media_path[-1]]
+                
+                page_info = data["page_info"]
+                edges = data["edges"]
+                
+                for index in range(min(len(edges), count)):
+                    node = edges[index]["node"]
+                    m = Media(node["shortcode"])
+                    m.set_data(node)
+                    if isinstance(obj, Account):
+                        m.likes_count = node["edge_media_preview_like"]["count"]
+                        m.owner = obj
+                    else:
+                        m.likes_count = node["edge_liked_by"]
+                    
+                    obj.media.add(m)
+                    medias.append(m)
+
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
+
+                if len(edges) < count and page_info["has_next_page"]:
+                    count = count - len(edges)
+                else:
+                    return medias, pointer
+                
+            except (ValueError, KeyError) as exception:
+                raise UnexpectedResponse(
+                    exception,
+                    "https://www.instagram.com/" + obj.base_url + getattr(obj, obj.primary_key),
+                )
+
+        while True:
+            data = {"after": pointer, "first": min(limit, count)}
+            if isinstance(obj, Tag):
+                data["name"] = "tag_name"
+                data["name_value"] = obj.name
+            else:
+                data["name"] = "id"
+                data["name_value"] = obj.id
+
+            response = await self.graphql_request(
+                query_hash=obj.media_query_hash,
+                variables=variables_string.format(**data),
+                settings=settings,
+            )
+            
+            try:
+                data = await response.json()["data"]
+                for key in obj.media_path:
+                    data = data[key]
+                page_info = data["page_info"]
+                edges = data["edges"]
+                
+                for index in range(min(len(edges), count)):
+                    node = edges[index]["node"]
+                    m = Media(node["shortcode"])
+                    m.set_data(node)
+                    if isinstance(obj, Account):
+                        m.likes_count = node["edge_media_preview_like"]["count"]
+                        m.owner = obj
+                    else:
+                        m.likes_count = node["edge_liked_by"]
+                    obj.media.add(m)
+                    medias.append(m)
+
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
+
+                if len(edges) < count and page_info["has_next_page"]:
+                    count = count - len(edges)
+                    asyncio.sleep(delay)
+                else:
+                    return medias, pointer
+                
+            except (ValueError, KeyError) as exception:
+                raise UnexpectedResponse(exception, response.url)
+
+    @exception_manager.decorator
+    async def get_likes(self, media, pointer=None, count=20, limit=50, delay=0, settings=None):
+        if not isinstance(media, Media):
+            raise TypeError("'media' must be Media type")
+        if not isinstance(pointer, str) and not pointer is None:
+            raise TypeError("'pointer' must be str type or None")
+        if not isinstance(count, int):
+            raise TypeError("'count' must be int type")
+        if not isinstance(limit, int):
+            raise TypeError("'limit' must be int type")
+        if not isinstance(delay, (int, float)):
+            raise TypeError("'delay' must be int or float type")
+
+        await self.update(media, settings=settings)
+
+        if pointer:
+            variables_string = '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
+        else:
+            variables_string = '{{"shortcode":"{shortcode}","first":{first}}}'
+        likes = []
+
+        while True:
+            data = {"shortcode": media.code, "first": min(limit, count)}
+            if pointer:
+                data["after"] = pointer
+
+            response = await self.graphql_request(
+                query_hash="1cb6ec562846122743b61e492c85999f",
+                variables=variables_string.format(**data),
+                settings=settings,
+            )
+
+            try:
+                data = response.json()["data"]["shortcode_media"]["edge_liked_by"]
+                edges = data["edges"]
+                page_info = data["page_info"]
+                media.likes_count = data["count"]
+                
+                for index in range(min(len(edges), count)):
+                    node = edges[index]["node"]
+                    account = Account(node["username"])
+                    account.id = node["id"]
+                    account.profile_pic_url = node["profile_pic_url"]
+                    account.is_verified = node["is_verified"]
+                    account.full_name = node["full_name"]
+                    media.likes.add(account)
+                    likes.append(account)
+
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
+
+                if len(edges) < count and page_info["has_next_page"]:
+                    count = count-len(edges)
+                    variables_string = \
+                        '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
+                    asyncio.sleep(delay)
+                else:
+                    return likes, pointer
+            except (ValueError, KeyError) as exception:
+                raise UnexpectedResponse(exception, response.url)
+
+    @exception_manager.decorator
+    async def get_comments(self, media, pointer=None, count=35, limit=50, delay=0, settings=None):
+        if not isinstance(media, Media):
+            raise TypeError("'media' must be Media type")
+        if not isinstance(pointer, str) and not pointer is None:
+            raise TypeError("'pointer' must be str type or None")
+        if not isinstance(count, int):
+            raise TypeError("'count' must be int type")
+        if not isinstance(limit, int):
+            raise TypeError("'limit' must be int type")
+        if not isinstance(delay, (int, float)):
+            raise TypeError("'delay' must be int or float type")
+
+        data = await self.update(media, settings=settings)
+
+        comments = []
+
+        if pointer is None:
+            try:
+                data = data["edge_media_to_comment"]
+                edges = data["edges"]
+                page_info = data["page_info"]
+                
+                for index in range(min(len(edges), count)):
+                    node = edges[index]["node"]
+                    c = Comment(node["id"], media=media,
+                                owner=Account(node["owner"]["username"]),
+                                text=node["text"],
+                                created_at=node["created_at"])
+                    media.comments.add(c)
+                    comments.append(c)
+
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
+
+                if len(edges) < count and not pointer is None:
+                    count = count - len(edges)
+                else:
+                    return comments, pointer
+            except (ValueError, KeyError) as exception:
+                raise UnexpectedResponse(exception, media)
+
+        variables_string =  '{{"shortcode":"{code}","first":{first},"after":"{after}"}}'
+        while True:
+            data = {"after": pointer, "code": media.code, "first": min(limit, count)}
+
+            response = await self.graphql_request(
+                query_hash="33ba35852cb50da46f5b5e889df7d159",
+                variables=variables_string.format(**data),
+                settings=settings,
+            )
+
+            try:
+                data = response.json()["data"]["shortcode_media"]["edge_media_to_comment"]
+                media.comments_count = data["count"]
+                edges = data["edges"]
+                page_info = data["page_info"]
+                
+                for index in range(min(len(edges), count)):
+                    node = edges[index]["node"]
+                    c = Comment(node["id"],
+                                media=media,
+                                owner=Account(node["owner"]["username"]),
+                                text=node["text"],
+                                created_at=node["created_at"])
+                    media.comments.add(c)
+                    comments.append(c)
+                
+                pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
+
+                if len(edges) < count and page_info["has_next_page"]:
+                    count = count - len(edges)
+                    sleep(delay)
+                else:
+                    return comments, pointer
+            except (ValueError, KeyError) as exception:
+                raise UnexpectedResponse(exception, response.url)
+
+    async def graphql_request(self, query_hash, variables, settings=None):
+        if not isinstance(query_hash, str):
+            raise TypeError("'query_hash' must be str type")
+        if not isinstance(variables, str):
+            raise TypeError("'variables' must be str type")
+        if settings is None:
+            settings = dict()
+        elif not isinstance(settings, dict):
+            raise TypeError("'settings' must be dict type")
+
+        if not "params" in settings:
+            settings["params"] = {"query_hash": query_hash}
+        else:
+            settings["params"]["query_hash"] = query_hash
+
+        settings["params"]["variables"] = variables
+        gis = "%s:%s" % (self.rhx_gis, variables)
+        if not "headers" in settings:
+            settings["headers"] = {"X-Instagram-GIS": hashlib.md5(gis.encode("utf-8")).hexdigest()}
+        else:
+            settings["headers"]["X-Instagram-GIS"] = hashlib.md5(gis.encode("utf-8")).hexdigest()
+        settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
+        if not self.user_agent is None:
+            settings["headers"]["User-Agent"] = self.user_agent
+
+        try:
+            response = await self.get_request("https://www.instagram.com/graphql/query/", **settings)
+            return response
+        except (requests.exceptions.RequestException, ConnectionResetError) as exception:
+            raise InternetException(exception)
+
+    async def action_request(self, referer, url, data=None, settings=None):
+        if not isinstance(referer, str):
+            raise TypeError("'referer' must be str type")
+        if not isinstance(url, str):
+            raise TypeError("'url' must be str type")
+        if data is None:
+            data = dict()
+        if not isinstance(data, dict):
+            raise TypeError("'data' must be dict type or None")
+        if settings is None:
+            settings = dict()
+        elif not isinstance(settings, dict):
+            raise TypeError("'settings' must be dict type or None")
+
+        headers = {
+            "Referer": referer,
+            "X-CSRFToken": self.csrf_token,
+            "X-Instagram-Ajax": "1",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+        if not self.user_agent is None:
+            headers["User-Agent"] = self.user_agent
+        if "headers" in settings:
+            settings["headers"].update(headers)
+        else:
+            settings["headers"] = headers
+        if "data" in settings:
+            settings["data"].update(data)
+        else:
+            settings["data"] = data
+
+        response = await self.post_request(url, **settings)
+        return response
+
+    async def get_request(self, *args, **kwargs):
+        try:
+            response = self.session.get(*args, **kwargs)
+            return response
+        except (requests.exceptions.RequestException, ConnectionResetError) as exception:
+            raise InternetException(exception)
+
+    async def post_request(self, *args, **kwargs):
+        try:
+            response = self.session.post(*args, **kwargs)
+            return response
+        except (requests.exceptions.RequestException, ConnectionResetError) as exception:
+            raise InternetException(exception)
+
 
 
 class AgentAccount(Account, Agent):

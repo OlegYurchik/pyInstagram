@@ -678,7 +678,10 @@ class AsyncAgent:
             settings["headers"]["User-Agent"] = self.user_agent
 
         try:
-            response = await self.get_request("https://www.instagram.com/graphql/query/", **settings)
+            response = await self.get_request(
+                "https://www.instagram.com/graphql/query/",
+                **settings,
+            )
             return response
         except (requests.exceptions.RequestException, ConnectionResetError) as exception:
             raise InternetException(exception)

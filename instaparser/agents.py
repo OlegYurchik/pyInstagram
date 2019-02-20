@@ -17,6 +17,8 @@ exception_manager = ExceptionManager()
 
 class Agent:
     def __init__(self, settings=None):
+        self.rhx_gis = None
+        self.csrf_token = None
         self.session = requests.Session()
         
         self.update(settings=settings)
@@ -371,13 +373,15 @@ class AsyncAgent:
         await agent.__ainit__(settings=settings)
         return agent
 
+    async def delete(self):
+        await self.session.close()
+
     async def __ainit__(self, settings=None):
+        self.rhx_gix = None
+        self.csrf_token = None
         self.session = aiohttp.ClientSession(raise_for_status=True)
 
         await self.update(settings=settings)
-
-    def __del__(self):
-        self.session.close()
 
     @exception_manager.decorator
     async def update(self, obj=None, settings=None):
@@ -697,7 +701,7 @@ class AsyncAgent:
         headers = {
             "Referer": referer,
             "X-CSRFToken": self.csrf_token,
-            "X-Instagram-Ajax": "1",
+            "X-Instagram-AJAX": "1",
             "X-Requested-With": "XMLHttpRequest",
         }
         if "headers" in settings:
@@ -746,11 +750,15 @@ class AgentAccount(Account, Agent):
         
         if "headers" in settings:
             settings["headers"].update({
+                # "X-IG-App-ID": "936619743392459",
+                # "X_Instagram-AJAX": "ee72defd9231",
                 "X-CSRFToken": self.csrf_token,
                 "Referer": "https://www.instagram.com/",
             })
         else:
             settings["headers"] = {
+                # "X-IG-App-ID": "936619743392459",
+                # "X_Instagram-AJAX": "ee72defd9231",
                 "X-CSRFToken": self.csrf_token,
                 "Referer": "https://www.instagram.com/",
             }
@@ -1128,29 +1136,33 @@ class AsyncAgentAccount(Account, AsyncAgent):
             raise TypeError("'settings' must be dict type")
 
         Account.__init__(self, login)
-        AsyncAgent.__ainit__(self, settings=settings)
+        await AsyncAgent.__ainit__(self, settings=settings)
 
         data = {"username": self.login, "password": password}
         
         if "headers" in settings:
             settings["headers"].update({
+                # "X-IG-App-ID": "936619743392459",
+                # "X_Instagram-AJAX": "ee72defd9231",
                 "X-CSRFToken": self.csrf_token,
                 "Referer": "https://www.instagram.com/",
             })
         else:
             settings["headers"] = {
+                # "X-IG-App-ID": "936619743392459",
+                # "X_Instagram-AJAX": "ee72defd9231",
                 "X-CSRFToken": self.csrf_token,
                 "Referer": "https://www.instagram.com/",
             }
 
-        response = self.post_request(
+        response = await self.post_request(
             "https://www.instagram.com/accounts/login/ajax/",
             data=data,
             **settings,
         )
 
         try:
-            data = response.json()
+            data = await response.json()
             if not data["authenticated"]:
                 raise AuthException(self.login) 
         except (ValueError, KeyError) as exception:
@@ -1160,14 +1172,14 @@ class AsyncAgentAccount(Account, AsyncAgent):
     async def update(self, obj=None, settings=None):
         if obj is None:
             obj = self
-        return super().update(obj, settings=settings)
+        return await super().update(obj, settings=settings)
 
     @exception_manager.decorator
     async def get_media(self, obj=None, pointer=None, count=12, limit=12, delay=0, settings=None):
         if obj is None:
             obj = self
-        return super().get_media(obj, pointer=pointer, count=count, limit=limit, delay=delay,
-                                 settings=settings)
+        return await super().get_media(obj, pointer=pointer, count=count, limit=limit, delay=delay,
+                                       settings=settings)
 
     @exception_manager.decorator
     async def get_follows(self, account=None, pointer=None, count=20, limit=50, delay=0,
@@ -1185,7 +1197,7 @@ class AsyncAgentAccount(Account, AsyncAgent):
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        self.update(account, settings=settings)
+        await self.update(account, settings=settings)
 
         if pointer is None:
             variables_string = '{{"id":"{id}","first":{first}}}'
@@ -1198,18 +1210,18 @@ class AsyncAgentAccount(Account, AsyncAgent):
             if not pointer is None:
                 data["after"] = pointer
 
-            response = self.graphql_request(
+            response = await self.graphql_request(
                 query_hash="58712303d941c6855d4e888c5f0cd22f",
                 variables=variables_string.format(**data),
                 settings=settings,
             )
 
             try:
-                data = response.json()["data"]["user"]["edge_follow"]
+                data = (await response.json())["data"]["user"]["edge_follow"]
                 edges = data["edges"]
                 page_info = data["page_info"]
                 account.follows_count = data["count"]
-                
+
                 for index in range(min(len(edges), count)):
                     node = edges[index]["node"]
                     a = Account(node["username"])
@@ -1219,13 +1231,13 @@ class AsyncAgentAccount(Account, AsyncAgent):
                     a.full_name = node["full_name"]
                     account.follows.add(a)
                     follows.append(a)
-                
+
                 pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
-                
+
                 if len(edges) < count and page_info["has_next_page"]:
                     count = count - len(edges)
                     variables_string = '{{"id":"{id}","first":{first},"after":"{after}"}}'
-                    sleep(delay)
+                    await asyncio.sleep(delay)
                 else:
                     return follows, pointer
             except (ValueError, KeyError) as exception:
@@ -1247,7 +1259,7 @@ class AsyncAgentAccount(Account, AsyncAgent):
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        self.update(account, settings=settings)
+        await self.update(account, settings=settings)
         
         if pointer is None:
             variables_string = '{{"id":"{id}","first":{first}}}'
@@ -1260,18 +1272,18 @@ class AsyncAgentAccount(Account, AsyncAgent):
             if not pointer is None:
                 data["after"] = pointer
 
-            response = self.graphql_request(
+            response = await self.graphql_request(
                 query_hash="37479f2b8209594dde7facb0d904896a",
                 variables=variables_string.format(**data),
                 settings=settings,
             )
 
             try:
-                data = response.json()["data"]["user"]["edge_followed_by"]
+                data = (await response.json())["data"]["user"]["edge_followed_by"]
                 edges = data["edges"]
                 page_info = data["page_info"]
                 account.followers_count = data["count"]
-                
+
                 for index in range(min(len(edges), count)):
                     node = edges[index]["node"]
                     a = Account(node["username"])
@@ -1287,7 +1299,7 @@ class AsyncAgentAccount(Account, AsyncAgent):
                 if len(edges) < count and page_info["has_next_page"]:
                     count = count - len(edges)
                     variables_string = '{{"id":"{id}","first":{first},"after":"{after}"}}'
-                    sleep(delay)
+                    await asyncio.sleep(delay)
                 else:
                     return followers, pointer
             except (ValueError, KeyError) as exception:
@@ -1295,14 +1307,15 @@ class AsyncAgentAccount(Account, AsyncAgent):
 
     @exception_manager.decorator
     async def stories(self, settings=None):
-        response = self.graphql_request(
+        response = await self.graphql_request(
             query_hash="60b755363b5c230111347a7a4e242001",
             variables='{"only_stories":true}',
             settings=settings,
         )
 
         try:
-            data = response.json()["data"]["user"]["feed_reels_tray"]["edge_reels_tray_to_reel"]
+            data = (await response.json())["data"]["user"]["feed_reels_tray"]
+            data = data["edge_reels_tray_to_reel"]
             return [Story(edge["node"]["id"]) for edge in data["edges"]]
         except (ValueError, KeyError) as exception:
             raise UnexpectedResponse(exception, response.url)
@@ -1323,7 +1336,7 @@ class AsyncAgentAccount(Account, AsyncAgent):
         feed = []
 
         while True:
-            response = self.graphql_request(
+            response = await self.graphql_request(
                 query_hash="485c25657308f08317c1e4b967356828",
                 variables=variables_string.format(
                     after=pointer,
@@ -1333,11 +1346,11 @@ class AsyncAgentAccount(Account, AsyncAgent):
             )
 
             try:
-                data = response.json()["data"]["user"]["edge_web_feed_timeline"]
+                data = (await response.json())["data"]["user"]["edge_web_feed_timeline"]
                 edges = data["edges"]
                 page_info = data["page_info"]
                 length = len(edges)
-                
+
                 for index in range(min(length, count)):
                     node = edges[index]["node"]
                     if not "shortcode" in node:
@@ -1346,12 +1359,12 @@ class AsyncAgentAccount(Account, AsyncAgent):
                     m = Media(node["shortcode"])
                     m.set_data(node)
                     feed.append(m)
-                
+
                 pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
-                
+
                 if length < count and page_info["has_next_page"]:
                     count -= length
-                    sleep(delay)
+                    await asyncio.sleep(delay)
                 else:
                     return feed, pointer
             except (ValueError, KeyError) as exception:
@@ -1363,16 +1376,16 @@ class AsyncAgentAccount(Account, AsyncAgent):
             raise TypeError("'media' must be Media type")
         
         if media.id is None:
-            self.update(media, settings=settings)
+            await self.update(media, settings=settings)
 
-        response = self.action_request(
+        response = await self.action_request(
             referer="https://www.instagram.com/p/%s/" % media.code,
             url="https://www.instagram.com/web/likes/%s/like/" % media.id,
             settings=settings,
         )
 
         try:
-            return response.json()["status"] == "ok"
+            return (await response.json())["status"] == "ok"
         except (ValueError, KeyError) as exception:
             raise UnexpectedResponse(exception, response.url)
 
@@ -1382,16 +1395,16 @@ class AsyncAgentAccount(Account, AsyncAgent):
             raise TypeError("'media' must be Media type")
 
         if media.id is None:
-            self.update(media, settings=settings)
+            await self.update(media, settings=settings)
 
-        response = self.action_request(
+        response = await self.action_request(
             referer="https://www.instagram.com/p/%s/" % media.code,
             url="https://www.instagram.com/web/likes/%s/unlike/" % media.id,
             settings=settings,
         )
 
         try:
-            return response.json()["status"] == "ok"
+            return (await response.json())["status"] == "ok"
         except (ValueError, KeyError) as exception:
             raise UnexpectedResponse(exception, response.url)
 
@@ -1403,9 +1416,9 @@ class AsyncAgentAccount(Account, AsyncAgent):
             raise TypeError("'text' must be str type")
 
         if media.id is None:
-            self.update(media, settings=settings)
+            await self.update(media, settings=settings)
 
-        response = self.action_request(
+        response = await self.action_request(
             referer="https://www.instagram.com/p/%s/" % media.code,
             url="https://www.instagram.com/web/comments/%s/add/" % media.id,
             data={"comment_text": text},
@@ -1413,7 +1426,7 @@ class AsyncAgentAccount(Account, AsyncAgent):
         )
 
         try:
-            data = response.json()
+            data = await response.json()
             if data["status"] == "ok":
                 comment = Comment(
                     data["id"],
@@ -1423,7 +1436,6 @@ class AsyncAgentAccount(Account, AsyncAgent):
                     created_at=data["created_time"],
                 )
                 return comment
-            return None
         except (ValueError, KeyError) as exception:
             raise UnexpectedResponse(exception, response.url)
 
@@ -1433,9 +1445,9 @@ class AsyncAgentAccount(Account, AsyncAgent):
             raise TypeError("'comment' must be Comment type")
 
         if comment.media.id is None:
-            self.update(comment.media, settings=settings)
+            await self.update(comment.media, settings=settings)
 
-        response = self.action_request(
+        response = await self.action_request(
             referer="https://www.instagram.com/p/%s/" % comment.media.code,
             url="https://www.instagram.com/web/comments/%s/delete/%s/" % (
                 comment.media.id,
@@ -1445,11 +1457,10 @@ class AsyncAgentAccount(Account, AsyncAgent):
         )
 
         try:
-            if response.json()["status"] == "ok":
+            if (await response.json())["status"] == "ok":
                 del comment
                 return True
-            else:
-                return False
+            return False
         except (ValueError, KeyError) as exception:
             raise UnexpectedResponse(exception, response.url)
 
@@ -1459,16 +1470,16 @@ class AsyncAgentAccount(Account, AsyncAgent):
             raise TypeError("'account' must be Account type")
 
         if account.id is None:
-            self.update(account, settings=settings)
+            await self.update(account, settings=settings)
 
-        response = self.action_request(
+        response = await self.action_request(
             referer="https://www.instagram.com/%s" % account.login,
             url="https://www.instagram.com/web/friendships/%s/follow/" % account.id,
             settings=settings,
         )
 
         try:
-            return response.json()["status"] == "ok"
+            return (await response.json())["status"] == "ok"
         except (ValueError, KeyError) as exception:
             raise UnexpectedResponse(exception, response.url)
 
@@ -1478,15 +1489,15 @@ class AsyncAgentAccount(Account, AsyncAgent):
             raise TypeError("'account' must be Account type")
 
         if account.id is None:
-            self.update(account, settings=settings)
+            await self.update(account, settings=settings)
 
-        response = self.action_request(
+        response = await self.action_request(
             referer="https://www.instagram.com/%s" % account.login,
             url="https://www.instagram.com/web/friendships/%s/unfollow/" % account.id,
             settings=settings,
         )
 
         try:
-            return response.json()["status"] == "ok"
+            return (await response.json())["status"] == "ok"
         except (ValueError, KeyError) as exception:
             raise UnexpectedResponse(exception, response.url)

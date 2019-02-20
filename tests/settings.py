@@ -14,3 +14,5 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json"
     photo_sets = config["photo_sets"]
     tags = config["tags"]
     videos = config["videos"]
+    anon = config["anon"]
+    auth = config["auth"]

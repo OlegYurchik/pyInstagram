@@ -20,5 +20,25 @@
     ],
     "tags": [
         "instagram"
-    ]
+    ],
+    "anon": {
+        "global_delay": {
+            "min": 0.5,
+            "max": 1.5
+        },
+        "local_delay": {
+            "min": 0.2,
+            "max": 0.6
+        }
+    },
+    "auth": {
+        "global_delay": {
+            "min": 5,
+            "max": 15
+        },
+        "local_delay": {
+            "min": 2,
+            "max": 6
+        }
+    }
 }

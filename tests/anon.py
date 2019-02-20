@@ -1,49 +1,56 @@
-import pytest
-from random import randint, choice
-
+import asyncio
+from .fixtures import agent, async_agent, event_loop, settings
 from instaparser.agents import Agent, AsyncAgent
 from instaparser.entities import Account, Media, Location, Tag
-
-from tests.settings import accounts, locations, photos, photo_sets, tags, videos
-
-
-@pytest.fixture
-def settings():
-    return {"headers": {
-        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101",
-    }}
+import pytest
+from random import choice, randint, random
+from tests.settings import accounts, anon, locations, photos, photo_sets, tags, videos
+from time import sleep
 
 
-@pytest.fixture
-def agent(settings):
-    return Agent(settings=settings)
+@pytest.fixture(scope="function")
+def delay():
+    if not anon["local_delay"] is None:
+        min_delay = anon["local_delay"].get("min", 0)
+        max_delay = anon["local_delay"].get("max", 10) 
+        return random() * (max_delay - min_delay) + min_delay
+    return 0
 
 
-@pytest.fixture
+def setup_function():
+    Account.clear_cache()
+    Media.clear_cache()
+    Location.clear_cache()
+    Tag.clear_cache()
+    if not anon["global_delay"] is None:
+        min_delay = anon["global_delay"].get("min", 0)
+        max_delay = anon["global_delay"].get("max", 120)
+        sleep(random() * (max_delay - min_delay) + min_delay)
+
+
 @pytest.mark.asyncio
-async def async_agent(settings):
-    return await AsyncAgent.create(settings=settings)
+async def teardown_module(async_agent):
+    await async_agent.delete()
 
 
 def test_update(agent, settings):
     agent.update(settings=settings)
 
-    assert not getattr(agent, "rhx_gis", None) is None
-    assert not getattr(agent, "csrf_token", None) is None
+    assert not agent.rhx_gis is None
+    assert not agent.csrf_token is None
 
 
 @pytest.mark.asyncio
-async def test_async_update(event_loop, async_agent, settings):
+async def test_async_update(async_agent, settings):
     await async_agent.update(settings=settings)
 
-    assert not getattr(async_agent, "rhx_gis", None) is None
-    assert not getattr(async_agent, "csrf_token", None) is None
+    assert not async_agent.rhx_gis is None
+    assert not async_agent.csrf_token is None
 
 
 @pytest.mark.parametrize("username", accounts)
 def test_update_account(agent, settings, username):
     account = Account(username)
-
     data = agent.update(account, settings=settings)
 
     assert not data is None
@@ -59,14 +66,11 @@ def test_update_account(agent, settings, username):
     assert not account.is_verified is None
     assert not account.country_block is None
 
-    Account.clear_cache()
-
 
 @pytest.mark.parametrize("username", accounts)
 @pytest.mark.asyncio
-async def test_async_update_account(event_loop, async_agent, settings, username):
+async def test_async_update_account(async_agent, settings, username):
     account = Account(username)
-
     data = await async_agent.update(account, settings=settings)
 
     assert not data is None
@@ -82,241 +86,198 @@ async def test_async_update_account(event_loop, async_agent, settings, username)
     assert not account.is_verified is None
     assert not account.country_block is None
 
-    Account.clear_cache()
+
+@pytest.mark.parametrize("shortcode", [choice(photos + photo_sets + videos)])
+def test_update_media(agent, settings, shortcode):
+    media = Media(shortcode)
+    data = agent.update(media, settings=settings)
+
+    assert not data is None
+    assert not media.id is None
+    assert not media.code is None
+    assert not media.date is None
+    assert not media.likes_count is None
+    assert not media.comments_count is None
+    assert not media.comments_disabled is None
+    assert not media.is_video is None
+    assert not media.display_url is None
+    assert not media.resources is None
+    assert not media.is_album is None
 
 
-@pytest.mark.parametrize("shortcode", photos)
-def test_update_photo(agent, settings, shortcode):
-    photo = Media(shortcode)
-
-    agent.update(photo, settings=settings)
-
-    assert not photo.is_video
-
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("shortcode", photos)
+@pytest.mark.parametrize("shortcode", [choice(photos + photo_sets + videos)])
 @pytest.mark.asyncio
-async def test_async_update_photo(event_loop, async_agent, settings, shortcode):
-    photo = Media(shortcode)
+async def test_async_update_media(async_agent, settings, shortcode):
+    media = Media(shortcode)
+    data = await async_agent.update(media, settings=settings)
 
-    await async_agent.update(photo, settings=settings)
-
-    assert not photo.is_video
-
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("shortcode", photo_sets)
-def test_update_photo_set(agent, settings, shortcode):
-    photo_set = Media(shortcode)
-
-    agent.update(photo_set, settings=settings)
-
-    assert not photo_set.is_video
-
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("shortcode", photo_sets)
-@pytest.mark.asyncio
-async def test_async_update_photo_set(event_loop, async_agent, settings, shortcode):
-    photo_set = Media(shortcode)
-
-    await async_agent.update(photo_set, settings=settings)
-
-    assert not photo_set.is_video
-
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("shortcode", videos)
-def test_update_video(agent, settings, shortcode):
-    video = Media(shortcode)
-
-    agent.update(video, settings=settings)
-
-    assert video.is_video
-
-    Media.clear_cache()
-
-
-@pytest.mark.parametrize("shortcode", videos)
-@pytest.mark.asyncio
-async def test_async_update_video(event_loop, async_agent, settings, shortcode):
-    video = Media(shortcode)
-
-    await async_agent.update(video, settings=settings)
-
-    assert video.is_video
-
-    Media.clear_cache()
+    assert not data is None
+    assert not media.id is None
+    assert not media.code is None
+    assert not media.date is None
+    assert not media.likes_count is None
+    assert not media.comments_count is None
+    assert not media.comments_disabled is None
+    assert not media.is_video is None
+    assert not media.display_url is None
+    assert not media.resources is None
+    assert not media.is_album is None
 
 
 @pytest.mark.parametrize("id", locations)
 def test_update_location(agent, settings, id):
     location = Location(id)
+    data = agent.update(location, settings=settings)
 
-    agent.update(location, settings=settings)
-
-    Location.clear_cache()
+    assert not data is None
+    assert not location.id is None
+    assert not location.slug is None
+    assert not location.name is None
+    assert not location.has_public_page is None
+    assert not location.coordinates is None
+    assert not location.media_count is None
 
 
 @pytest.mark.parametrize("id", locations)
 @pytest.mark.asyncio
-async def test_async_update_location(event_loop, async_agent, settings, id):
+async def test_async_update_location(async_agent, settings, id):
     location = Location(id)
+    data = await async_agent.update(location, settings=settings)
 
-    await async_agent.update(location, settings=settings)
-
-    Location.clear_cache()
+    assert not data is None
+    assert not location.id is None
+    assert not location.slug is None
+    assert not location.name is None
+    assert not location.has_public_page is None
+    assert not location.coordinates is None
+    assert not location.media_count is None
 
 
 @pytest.mark.parametrize("name", tags)
-def test_update_tag(agent, name):
+def test_update_tag(agent, settings, name):
     tag = Tag(name)
+    data = agent.update(tag, settings=settings)
 
-    agent.update(tag)
-
-    Tag.clear_cache()
+    assert not data is None
+    assert not tag.name is None
+    assert not tag.media_count is None
+    assert tag.top_posts
 
 
 @pytest.mark.parametrize("name", tags)
 @pytest.mark.asyncio
-async def test_async_update_tag(event_loop, async_agent, settings, name):
+async def test_async_update_tag(async_agent, settings, name):
     tag = Tag(name)
+    data = await async_agent.update(tag, settings=settings)
 
-    await async_agent.update(tag, settings=settings)
-
-    Tag.clear_cache()
+    assert not data is None
+    assert not tag.name is None
+    assert not tag.media_count is None
+    assert tag.top_posts
 
 
 @pytest.mark.parametrize("count, username", [(randint(100, 500), choice(accounts))])
-def test_get_media_account(agent, settings, count, username):
+def test_get_media_account(agent, delay, settings, count, username):
     account = Account(username)
-
-    data, pointer = agent.get_media(account, count=count, settings=settings)
+    data, pointer = agent.get_media(account, count=count, delay=delay, settings=settings)
 
     assert min(account.media_count, count) == len(data)
     assert (pointer is None) == (account.media_count <= count)
 
-    Account.clear_cache()
-    Media.clear_cache()
-
 
 @pytest.mark.parametrize("count, username", [(randint(100, 500), choice(accounts))])
 @pytest.mark.asyncio
-async def test_async_get_media_account(event_loop, async_agent, settings, count, username):
+async def test_async_get_media_account(async_agent, delay, settings, count, username):
     account = Account(username)
-
-    data, pointer = await async_agent.get_media(account, count=count, settings=settings)
+    data, pointer = await async_agent.get_media(
+        account,
+        count=count,
+        delay=delay,
+        settings=settings,
+    )
 
     assert min(account.media_count, count) == len(data)
     assert (pointer is None) == (account.media_count <= count)
 
-    Account.clear_cache()
-    Media.clear_cache()
-
 
 @pytest.mark.parametrize("count, id", [(randint(100, 500), choice(locations))])
-def test_get_media_location(agent, settings, count, id):
+def test_get_media_location(agent, delay, settings, count, id):
     location = Location(id)
-
-    data, pointer = agent.get_media(location, count=count, settings=settings)
+    data, pointer = agent.get_media(location, count=count, delay=delay, settings=settings)
 
     assert min(location.media_count, count) == len(data)
     assert (pointer is None) == (location.media_count <= count)
 
-    Location.clear_cache()
-    Media.clear_cache()
-
 
 @pytest.mark.parametrize("count, id", [(randint(100, 500), choice(locations))])
 @pytest.mark.asyncio
-async def test_async_get_media_location(event_loop, async_agent, settings, count, id):
+async def test_async_get_media_location(async_agent, delay, settings, count, id):
     location = Location(id)
-
-    data, pointer = await async_agent.get_media(location, count=count, settings=settings)
+    data, pointer = await async_agent.get_media(
+        location,
+        count=count,
+        delay=delay,
+        settings=settings,
+    )
 
     assert min(location.media_count, count) == len(data)
     assert (pointer is None) == (location.media_count <= count)
 
-    Location.clear_cache()
-    Media.clear_cache()
-
 
 @pytest.mark.parametrize("count, name", [(randint(100, 500), choice(tags))])
-def test_get_media_tag(agent, settings, count, name):
+def test_get_media_tag(agent, delay, settings, count, name):
     tag = Tag(name)
-
-    data, pointer = agent.get_media(tag, count=count, settings=settings)
+    data, pointer = agent.get_media(tag, count=count, delay=delay, settings=settings)
 
     assert min(tag.media_count, count) == len(data)
     assert (pointer is None) == (tag.media_count <= count)
-
-    Tag.clear_cache()
-    Media.clear_cache()
 
 
 @pytest.mark.parametrize("count, name", [(randint(100, 500), choice(tags))])
 @pytest.mark.asyncio
-async def test_async_get_media_tag(event_loop, async_agent, settings, count, name):
+async def test_async_get_media_tag(async_agent, delay, settings, count, name):
     tag = Tag(name)
-
-    data, pointer =await async_agent.get_media(tag, count=count, settings=settings)
+    data, pointer = await async_agent.get_media(tag, count=count, delay=delay, settings=settings)
 
     assert min(tag.media_count, count) == len(data)
     assert (pointer is None) == (tag.media_count <= count)
-
-    Tag.clear_cache()
-    Media.clear_cache()
 
 
 @pytest.mark.parametrize("shortcode", [choice(photos), choice(photo_sets), choice(videos)])
 def test_get_likes(agent, settings, shortcode):
     media = Media(shortcode)
-
     data, _ = agent.get_likes(media, settings=settings)
 
     assert media.likes_count >= len(data)
 
-    Media.clear_cache()
-
 
 @pytest.mark.parametrize("shortcode", [choice(photos), choice(photo_sets), choice(videos)])
 @pytest.mark.asyncio
-async def test_async_get_likes(event_loop, async_agent, settings, shortcode):
+async def test_async_get_likes(async_agent, settings, shortcode):
     media = Media(shortcode)
-
     data, _ = await async_agent.get_likes(media, settings=settings)
 
     assert media.likes_count >= len(data)
 
-    Media.clear_cache()
-
 
 @pytest.mark.parametrize(
-    "count,shortcode",
+    "count, shortcode",
     [(randint(100, 500), shortcode) for shortcode in [
         choice(photos),
         choice(photo_sets),
         choice(videos),
     ]],
 )
-def test_get_comments(agent, settings, count, shortcode):
+def test_get_comments(agent, delay, settings, count, shortcode):
     media = Media(shortcode)
-
-    data, pointer = agent.get_comments(media, count=count, settings=settings)
+    data, pointer = agent.get_comments(media, count=count, delay=delay, settings=settings)
 
     assert min(media.comments_count, count) == len(data)
-    assert (pointer is None) == (media.likes_count <= count)
-
-    Media.clear_cache()
+    assert (pointer is None) == (media.comments_count <= count)
 
 
 @pytest.mark.parametrize(
-    "count,shortcode",
+    "count, shortcode",
     [(randint(100, 500), shortcode) for shortcode in [
         choice(photos),
         choice(photo_sets),
@@ -324,114 +285,104 @@ def test_get_comments(agent, settings, count, shortcode):
     ]],
 )
 @pytest.mark.asyncio
-async def test_async_get_comments(event_loop, async_agent, settings, count, shortcode):
+async def test_async_get_comments(async_agent, delay, settings, count, shortcode):
     media = Media(shortcode)
-
-    data, pointer = await async_agent.get_comments(media, count=count, settings=settings)
+    data, pointer = await async_agent.get_comments(
+        media,
+        count=count,
+        delay=delay,
+        settings=settings,
+    )
 
     assert min(media.comments_count, count) == len(data)
-    assert (pointer is None) == (media.likes_count <= count)
-
-    Media.clear_cache()
+    assert (pointer is None) == (media.comments_count <= count)
 
 
 @pytest.mark.parametrize("count, username", [(randint(1, 10), choice(accounts))])
-def test_get_media_account_pointer(agent, count, settings, username):
+def test_get_media_account_pointer(agent, delay, settings, count, username):
     account = Account(username)
     pointer = None
     data = []
 
     for _ in range(count):
         tmp, pointer = agent.get_media(account, pointer=pointer, settings=settings)
+        sleep(delay)
         data.extend(tmp)
 
-    assert (pointer is None) == (account.media_count <= count)
-
-    Account.clear_cache()
-    Media.clear_cache()
+    assert (pointer is None) == (account.media_count == len(data))
 
 
 @pytest.mark.parametrize("count, username", [(randint(1, 10), choice(accounts))])
 @pytest.mark.asyncio
-async def test_async_get_media_account_pointer(event_loop, async_agent, settings, count, username):
+async def test_async_get_media_account_pointer(async_agent, delay, settings, count, username):
     account = Account(username)
     pointer = None
     data = []
 
     for _ in range(count):
         tmp, pointer = await async_agent.get_media(account, pointer=pointer, settings=settings)
+        await asyncio.sleep(delay)
         data.extend(tmp)
 
-    assert (pointer is None) == (account.media_count <= count)
-
-    Account.clear_cache()
-    Media.clear_cache()
+    assert (pointer is None) == (account.media_count == len(data))
 
 
 @pytest.mark.parametrize("count, id", [(randint(1, 10), choice(locations))])
-def test_get_media_location_pointer(agent, settings, count, id):
+def test_get_media_location_pointer(agent, delay, settings, count, id):
     location = Location(id)
     pointer = None
     data = []
 
     for _ in range(count):
         tmp, pointer = agent.get_media(location, pointer=pointer, settings=settings)
+        sleep(delay)
         data.extend(tmp)
 
-    assert (pointer is None) == (location.media_count <= count)
-
-    Location.clear_cache()
-    Media.clear_cache()
+    assert (pointer is None) == (location.media_count == len(data))
 
 
 @pytest.mark.parametrize("count, id", [(randint(1, 10), choice(locations))])
 @pytest.mark.asyncio
-async def test_async_get_media_location_pointer(event_loop, async_agent, settings, count, id):
+async def test_async_get_media_location_pointer(async_agent, delay, settings, count, id):
     location = Location(id)
     pointer = None
     data = []
 
     for _ in range(count):
         tmp, pointer = await async_agent.get_media(location, pointer=pointer, settings=settings)
+        await asyncio.sleep(delay)
         data.extend(tmp)
 
-    assert (pointer is None) == (location.media_count <= count)
-
-    Location.clear_cache()
-    Media.clear_cache()
+    assert (pointer is None) == (location.media_count == len(data))
 
 
 @pytest.mark.parametrize("count, name", [(randint(1, 10), choice(tags))])
-def test_get_media_tag_pointer(agent, settings, count, name):
+def test_get_media_tag_pointer(agent, delay, settings, count, name):
     tag = Tag(name)
     pointer = None
     data = []
 
     for _ in range(count):
         tmp, pointer = agent.get_media(tag, pointer=pointer, settings=settings)
+        sleep(delay)
         data.extend(tmp)
 
-    assert (pointer is None) == (tag.media_count <= count)
-
-    Tag.clear_cache()
-    Media.clear_cache()
+    assert (pointer is None) == (tag.media_count == len(data))
 
 
 @pytest.mark.parametrize("count, name", [(randint(1, 10), choice(tags))])
 @pytest.mark.asyncio
-async def test_async_get_media_tag_pointer(event_loop, async_agent, settings, count, name):
+async def test_async_get_media_tag_pointer(async_agent, delay, settings, count, name):
     tag = Tag(name)
     pointer = None
     data = []
 
     for _ in range(count):
         tmp, pointer = await async_agent.get_media(tag, pointer=pointer, settings=settings)
+        await asyncio.sleep(delay)
         data.extend(tmp)
 
-    assert (pointer is None) == (tag.media_count <= count)
-
-    Tag.clear_cache()
-    Media.clear_cache()
+    assert (pointer is None) == (tag.media_count == len(data))
 
 
 @pytest.mark.parametrize(
@@ -442,18 +393,17 @@ async def test_async_get_media_tag_pointer(event_loop, async_agent, settings, co
         choice(videos),
     ]],
 )
-def test_get_comments_pointer(agent, settings, count, shortcode):
+def test_get_comments_pointer(agent, delay, settings, count, shortcode):
     media = Media(shortcode)
     pointer = None
     data = []
 
     for _ in range(count):
         tmp, pointer = agent.get_comments(media, pointer=pointer, settings=settings)
+        sleep(delay)
         data.extend(tmp)
 
-    assert (pointer is None) == (media.likes_count <= count)
-
-    Media.clear_cache()
+    assert (pointer is None) == (media.comments_count == len(data))
 
 
 @pytest.mark.parametrize(
@@ -465,15 +415,14 @@ def test_get_comments_pointer(agent, settings, count, shortcode):
     ]],
 )
 @pytest.mark.asyncio
-async def test_async_get_comments_pointer(event_loop, async_agent, settings, count, shortcode):
+async def test_async_get_comments_pointer(async_agent, delay, settings, count, shortcode):
     media = Media(shortcode)
     pointer = None
     data = []
 
     for _ in range(count):
         tmp, pointer = await async_agent.get_comments(media, pointer=pointer, settings=settings)
+        await asyncio.sleep(delay)
         data.extend(tmp)
 
-    assert (pointer is None) == (media.likes_count <= count)
-
-    Media.clear_cache()
+    assert (pointer is None) == (media.likes_count == len(data))

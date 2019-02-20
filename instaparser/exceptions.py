@@ -1,13 +1,27 @@
+from aiohttp import ClientResponseError
+from requests.exceptions import HTTPError
+
+
 class InstagramException(Exception):
     pass
 
 
 class InternetException(InstagramException):
     def __init__(self, exception):
-        super().__init__("Error by connection with Instagram to '%s' with response code '%s'" % (
-            exception.request.url,
-            exception.response.status_code,
-        ))
+        if isinstance(exception, HTTPError):
+            super().__init__(
+                "Error by connection with Instagram to '%s' with response code '%s'" % (
+                    exception.request.url,
+                    exception.response.status_code,
+                ),
+            )
+        elif isinstance(exception, ClientResponseError):
+            super().__init__(
+                "Error by connection with Instagram to '%s' with response code '%s'" % (
+                    exception.request.url,
+                    exception.response.status_code,
+                ),
+            )
 
         self.request = exception.request
         self.response = exception.response

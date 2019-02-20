@@ -16,13 +16,7 @@ exception_manager = ExceptionManager()
 
 
 class Agent:
-    def __init__(self, user_agent=None, settings=None):
-        if user_agent is None:
-            user_agent = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 " + \
-                         "Firefox/61.0"
-        if not isinstance(user_agent, str):
-            raise TypeError("'user_agent' must be str type or None")
-        self.user_agent = user_agent
+    def __init__(self, settings=None):
         self.session = requests.Session()
         
         self.update(settings=settings)
@@ -318,8 +312,6 @@ class Agent:
         else:
             settings["headers"]["X-Instagram-GIS"] = hashlib.md5(gis.encode("utf-8")).hexdigest()
         settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
-        if not self.user_agent is None:
-            settings["headers"]["User-Agent"] = self.user_agent
 
         return self.get_request("https://www.instagram.com/graphql/query/", **settings)
 
@@ -343,8 +335,6 @@ class Agent:
             "X-Instagram-Ajax": "1",
             "X-Requested-With": "XMLHttpRequest",
         }
-        if not self.user_agent is None:
-            headers["User-Agent"] = self.user_agent
         if "headers" in settings:
             settings["headers"].update(headers)
         else:
@@ -375,13 +365,19 @@ class Agent:
 
 
 class AsyncAgent:
-    async def __ainit__(self, user_agent=None, settings=None):
-        if isinstance(user_agent, str):
-            raise TypeError("'user_agent' must be str type")
-        self.user_agent = user_agent
+    @classmethod
+    async def create(cls, settings=None):
+        agent = cls()
+        await agent.__ainit__(settings=settings)
+        return agent
+
+    async def __ainit__(self, settings=None):
         self.session = aiohttp.ClientSession(raise_for_status=True)
 
         await self.update(settings=settings)
+
+    def __del__(self):
+        self.session.close()
 
     @exception_manager.decorator
     async def update(self, obj=None, settings=None):
@@ -412,7 +408,7 @@ class AsyncAgent:
             
             data = data["entry_data"]
             for key in obj.entry_data_path:
-                data=data[key]
+                data = data[key]
             obj.set_data(data)
             
             return data
@@ -674,8 +670,6 @@ class AsyncAgent:
         else:
             settings["headers"]["X-Instagram-GIS"] = hashlib.md5(gis.encode("utf-8")).hexdigest()
         settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
-        if not self.user_agent is None:
-            settings["headers"]["User-Agent"] = self.user_agent
 
         try:
             response = await self.get_request(
@@ -706,8 +700,6 @@ class AsyncAgent:
             "X-Instagram-Ajax": "1",
             "X-Requested-With": "XMLHttpRequest",
         }
-        if not self.user_agent is None:
-            headers["User-Agent"] = self.user_agent
         if "headers" in settings:
             settings["headers"].update(headers)
         else:
@@ -737,7 +729,7 @@ class AsyncAgent:
 
 class AgentAccount(Account, Agent):
     @exception_manager.decorator
-    def __init__(self, login, password, user_agent=None, settings=None):
+    def __init__(self, login, password, settings=None):
         if not isinstance(login, str):
             raise TypeError("'login' must be str type")
         if not isinstance(password, str):
@@ -748,7 +740,7 @@ class AgentAccount(Account, Agent):
             raise TypeError("'settings' must be dict type")
 
         Account.__init__(self, login)
-        Agent.__init__(self, user_agent=user_agent, settings=settings)
+        Agent.__init__(self, settings=settings)
 
         data = {"username": self.login, "password": password}
         
@@ -1111,8 +1103,21 @@ class AgentAccount(Account, Agent):
 
 
 class AsyncAgentAccount(Account, AsyncAgent):
+    @classmethod
+    async def create(cls, login, password, settings=None):
+        agent = cls(login, password, settings=settings)
+        await agent.__ainit__(login, password, settings=settings)
+        return agent
+
+    def __init__(self, login, password, settings=None):
+        pass
+
+    def __del__(self):
+        super(self, Account).__del__(self)
+        self.session.close()
+
     @exception_manager.decorator
-    async def __ainit__(self, login, password, user_agent=None, settings=None):
+    async def __ainit__(self, login, password, settings=None):
         if not isinstance(login, str):
             raise TypeError("'login' must be str type")
         if not isinstance(password, str):
@@ -1123,7 +1128,7 @@ class AsyncAgentAccount(Account, AsyncAgent):
             raise TypeError("'settings' must be dict type")
 
         Account.__init__(self, login)
-        Agent.__init__(self, user_agent=user_agent, settings=settings)
+        AsyncAgent.__ainit__(self, settings=settings)
 
         data = {"username": self.login, "password": password}
         

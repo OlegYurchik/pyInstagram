@@ -1,0 +1,24 @@
+{
+    "credentials": {
+        "login": "test",
+        "password": "test"
+    },
+    "accounts": [
+        "taeri__taeri"
+    ],
+    "photos": [
+        "BTcb3esjjVo"
+    ],
+    "photo_sets": [
+        "BZF0fbXj3zV"
+    ],
+    "videos": [
+        "BV76rluDGsC"
+    ],
+    "locations": [
+        251729389
+    ],
+    "tags": [
+        "instagram"
+    ]
+}

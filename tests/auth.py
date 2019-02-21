@@ -33,45 +33,6 @@ async def teardown_module(async_agent):
     await async_agent.delete()
 
 
-def test_auth(settings):
-    agent_account = AgentAccount(creds["login"], creds["password"], settings=settings)
-
-    assert not agent_account.id is None
-    assert not agent_account.full_name is None
-    assert not agent_account.profile_pic_url is None
-    assert not agent_account.profile_pic_url_hd is None
-    assert not agent_account.biography is None
-    assert not agent_account.follows_count is None
-    assert not agent_account.followers_count is None
-    assert not agent_account.media_count is None
-    assert not agent_account.is_private is None
-    assert not agent_account.is_verified is None
-    assert not agent_account.country_block is None
-
-
-@pytest.mark.asyncio
-async def test_async_auth(settings):
-    async_agent_account = await AsyncAgentAccount.create(
-        creds["login"],
-        creds["password"],
-        settings=settings,
-    )
-
-    assert not async_agent_account.id is None
-    assert not async_agent_account.full_name is None
-    assert not async_agent_account.profile_pic_url is None
-    assert not async_agent_account.profile_pic_url_hd is None
-    assert not async_agent_account.biography is None
-    assert not async_agent_account.follows_count is None
-    assert not async_agent_account.followers_count is None
-    assert not async_agent_account.media_count is None
-    assert not async_agent_account.is_private is None
-    assert not async_agent_account.is_verified is None
-    assert not async_agent_account.country_block is None
-
-    await async_agent_account.delete()
-
-
 def test_update(agent_account, settings):
     data = agent_account.update(settings=settings)
 

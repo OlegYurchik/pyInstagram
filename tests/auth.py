@@ -711,63 +711,71 @@ async def test_async_get_feed_pointer(async_agent_account, delay, settings, coun
 
 
 @pytest.mark.parametrize("shortcode", [choice(photos + photo_sets + videos)])
-def test_like_unlike_media(agent_account, settings, shortcode):
+def test_like_unlike_media(agent_account, delay, settings, shortcode):
     photo = Media(shortcode)
 
     assert agent_account.like(photo, settings=settings)
+    sleep(delay)
     assert agent_account.unlike(photo, settings=settings)
 
 
 @pytest.mark.parametrize("shortcode", [choice(photos + photo_sets + videos)])
 @pytest.mark.asyncio
-async def test_async_like_unlike_media(async_agent_account, settings, shortcode):
+async def test_async_like_unlike_media(async_agent_account, delay, settings, shortcode):
     photo = Media(shortcode)
 
     assert await async_agent_account.like(photo, settings=settings)
+    await asyncio.sleep(delay)
     assert await async_agent_account.unlike(photo, settings=settings)
 
 
 @pytest.mark.parametrize("username", [choice(accounts)])
-def test_follow_unfollow(agent_account, settings, username):
+def test_follow_unfollow(agent_account, delay, settings, username):
     account = Account(username)
     agent_account.update(settings=settings)
     follows_count = agent_account.follows_count
 
     assert agent_account.follow(account, settings=settings)
+    sleep(delay)
     agent_account.update(settings=settings)
     assert agent_account.follows_count == follows_count + 1
     assert agent_account.unfollow(account, settings=settings)
+    sleep(delay)
     agent_account.update(settings=settings)
     assert agent_account.follows_count == follows_count
 
 
 @pytest.mark.parametrize("username", [choice(accounts)])
 @pytest.mark.asyncio
-async def test_async_follow_unfollow(async_agent_account, settings, username):
+async def test_async_follow_unfollow(async_agent_account, delay, settings, username):
     account = Account(username)
     await async_agent_account.update(settings=settings)
     follows_count = async_agent_account.follows_count
 
     assert await async_agent_account.follow(account, settings=settings)
+    await asyncio.sleep(delay)
     await async_agent_account.update(settings=settings)
     assert async_agent_account.follows_count == follows_count + 1
     assert await async_agent_account.unfollow(account, settings=settings)
+    await asyncio.sleep(delay)
     await async_agent_account.update(settings=settings)
     assert async_agent_account.follows_count == follows_count
 
 
 @pytest.mark.parametrize("shortcode", [choice(photos + photo_sets + videos)])
-def test_comment(agent_account, settings, shortcode):
+def test_comment(agent_account, delay, settings, shortcode):
     media = Media(shortcode)
     comment = agent_account.add_comment(media, "test", settings=settings)
-    
+    sleep(delay)
+
     assert agent_account.delete_comment(comment, settings=settings)
 
 
 @pytest.mark.parametrize("shortcode", [choice(photos + photo_sets + videos)])
 @pytest.mark.asyncio
-async def test_async_comment(async_agent_account, settings, shortcode):
+async def test_async_comment(async_agent_account, delay, settings, shortcode):
     media = Media(shortcode)
     comment = await async_agent_account.add_comment(media, "test", settings=settings)
-    
+    await asyncio.sleep(delay)
+
     assert await async_agent_account.delete_comment(comment, settings=settings)

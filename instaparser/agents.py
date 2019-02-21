@@ -27,10 +27,9 @@ class Agent:
     def update(self, obj=None, settings=None):
         if not isinstance(obj, UpdatableElement) and not obj is None:
             raise TypeError("obj must be UpdatableElement type or None")
-        if settings is None:
-            settings = dict()
-        elif not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+        if not isinstance(settings, dict) and not settings is None:
+            raise TypeError("'settings' must be dict type or None")
+        settings = dict() if settings is None else settings.copy()
         
         query = "https://www.instagram.com/"
         if not obj is None:
@@ -103,7 +102,7 @@ class Agent:
                     count = count - len(edges)
                 else:
                     return medias, pointer
-                
+
             except (ValueError, KeyError) as exception:
                 raise UnexpectedResponse(
                     exception,
@@ -297,10 +296,9 @@ class Agent:
             raise TypeError("'query_hash' must be str type")
         if not isinstance(variables, str):
             raise TypeError("'variables' must be str type")
-        if settings is None:
-            settings = dict()
-        elif not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+        if not isinstance(settings, dict) and not settings is None:
+            raise TypeError("'settings' must be dict type or None")
+        settings = dict() if settings is None else settings.copy()
 
         if not "params" in settings:
             settings["params"] = {"query_hash": query_hash}
@@ -322,14 +320,12 @@ class Agent:
             raise TypeError("'referer' must be str type")
         if not isinstance(url, str):
             raise TypeError("'url' must be str type")
-        if data is None:
-            data = dict()
-        if not isinstance(data, dict):
+        if not isinstance(data, dict) and not data is None:
             raise TypeError("'data' must be dict type or None")
-        if settings is None:
-            settings = dict()
-        elif not isinstance(settings, dict):
+        data = dict() if data is None else data.copy()
+        if not isinstance(settings, dict) and not settings is None:
             raise TypeError("'settings' must be dict type or None")
+        settings = dict() if settings is None else settings.copy()
 
         headers = {
             "Referer": referer,
@@ -387,10 +383,9 @@ class AsyncAgent:
     async def update(self, obj=None, settings=None):
         if not isinstance(obj, UpdatableElement) and not obj is None:
             raise TypeError("obj must be UpdatableElement type or None")
-        if settings is None:
-            settings = dict()
-        elif not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+        if not isinstance(settings, dict) and not settings is None:
+            raise TypeError("'settings' must be dict type or None")
+        settings = dict() if settings is None else settings.copy()
         
         query = "https://www.instagram.com/"
         if not obj is None:
@@ -491,7 +486,7 @@ class AsyncAgent:
                     data = data[key]
                 page_info = data["page_info"]
                 edges = data["edges"]
-                
+
                 for index in range(min(len(edges), count)):
                     node = edges[index]["node"]
                     m = Media(node["shortcode"])
@@ -657,10 +652,9 @@ class AsyncAgent:
             raise TypeError("'query_hash' must be str type")
         if not isinstance(variables, str):
             raise TypeError("'variables' must be str type")
-        if settings is None:
-            settings = dict()
-        elif not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+        if not isinstance(settings, dict) and not settings is None:
+            raise TypeError("'settings' must be dict type or None")
+        settings = dict() if settings is None else settings.copy()
 
         if not "params" in settings:
             settings["params"] = {"query_hash": query_hash}
@@ -689,14 +683,12 @@ class AsyncAgent:
             raise TypeError("'referer' must be str type")
         if not isinstance(url, str):
             raise TypeError("'url' must be str type")
-        if data is None:
-            data = dict()
-        if not isinstance(data, dict):
+        if not isinstance(data, dict) and not data is None:
             raise TypeError("'data' must be dict type or None")
-        if settings is None:
-            settings = dict()
-        elif not isinstance(settings, dict):
+        data = dict() if data is None else data.copy()
+        if not isinstance(settings, dict) and not settings is None:
             raise TypeError("'settings' must be dict type or None")
+        settings = dict() if settings is None else settings.copy()
 
         headers = {
             "Referer": referer,
@@ -738,15 +730,12 @@ class AgentAccount(Account, Agent):
             raise TypeError("'login' must be str type")
         if not isinstance(password, str):
             raise TypeError("'password' must be str type")
-        if settings is None:
-            settings = dict()
-        elif not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+        if not isinstance(settings, dict) and not settings is None:
+            raise TypeError("'settings' must be dict type or None")
+        settings = dict() if settings is None else settings.copy()
 
         Account.__init__(self, login)
         Agent.__init__(self, settings=settings)
-
-        data = {"username": self.login, "password": password}
         
         if "headers" in settings:
             settings["headers"].update({
@@ -762,12 +751,12 @@ class AgentAccount(Account, Agent):
                 "X-CSRFToken": self.csrf_token,
                 "Referer": "https://www.instagram.com/",
             }
+        if "data" in settings:
+            settings["data"].update({"username": self.login, "password": password})
+        else:
+            settings["data"] = {"username": self.login, "password": password}
 
-        response = self.post_request(
-            "https://www.instagram.com/accounts/login/ajax/",
-            data=data,
-            **settings,
-        )
+        response = self.post_request("https://www.instagram.com/accounts/login/ajax/", **settings)
 
         try:
             data = response.json()
@@ -780,14 +769,14 @@ class AgentAccount(Account, Agent):
     def update(self, obj=None, settings=None):
         if obj is None:
             obj = self
-        return super().update(obj, settings=settings)
+        return Agent.update(self, obj, settings=settings)
 
     @exception_manager.decorator
     def get_media(self, obj=None, pointer=None, count=12, limit=12, delay=0, settings=None):
         if obj is None:
             obj = self
-        return super().get_media(obj, pointer=pointer, count=count, limit=limit, delay=delay,
-                                 settings=settings)
+        return Agent.get_media(self, obj, pointer=pointer, count=count, limit=limit, delay=delay,
+                               settings=settings)
 
     @exception_manager.decorator
     def get_follows(self, account=None, pointer=None, count=20, limit=50, delay=0, settings=None):
@@ -866,7 +855,7 @@ class AgentAccount(Account, Agent):
             raise TypeError("'delay' must be int or float type")
 
         self.update(account, settings=settings)
-        
+
         if pointer is None:
             variables_string = '{{"id":"{id}","first":{first}}}'
         else:
@@ -889,7 +878,7 @@ class AgentAccount(Account, Agent):
                 edges = data["edges"]
                 page_info = data["page_info"]
                 account.followers_count = data["count"]
-                
+
                 for index in range(min(len(edges), count)):
                     node = edges[index]["node"]
                     a = Account(node["username"])
@@ -899,9 +888,9 @@ class AgentAccount(Account, Agent):
                     a.full_name = node["full_name"]
                     account.followers.add(a)
                     followers.append(a)
-                
+
                 pointer = page_info["end_cursor"] if page_info["has_next_page"] else None
-                
+
                 if len(edges) < count and page_info["has_next_page"]:
                     count = count - len(edges)
                     variables_string = '{{"id":"{id}","first":{first},"after":"{after}"}}'
@@ -1121,7 +1110,7 @@ class AsyncAgentAccount(Account, AsyncAgent):
         pass
 
     def __del__(self):
-        super(self, Account).__del__(self)
+        Account.__del__(self)
         self.session.close()
 
     @exception_manager.decorator
@@ -1130,15 +1119,12 @@ class AsyncAgentAccount(Account, AsyncAgent):
             raise TypeError("'login' must be str type")
         if not isinstance(password, str):
             raise TypeError("'password' must be str type")
-        if settings is None:
-            settings = dict()
-        elif not isinstance(settings, dict):
-            raise TypeError("'settings' must be dict type")
+        if not isinstance(settings, dict) and not settings is None:
+            raise TypeError("'settings' must be dict type or None")
+        settings = dict() if settings is None else settings.copy()
 
         Account.__init__(self, login)
         await AsyncAgent.__ainit__(self, settings=settings)
-
-        data = {"username": self.login, "password": password}
         
         if "headers" in settings:
             settings["headers"].update({
@@ -1154,10 +1140,13 @@ class AsyncAgentAccount(Account, AsyncAgent):
                 "X-CSRFToken": self.csrf_token,
                 "Referer": "https://www.instagram.com/",
             }
+        if "data" in settings:
+            settings["data"].update({"username": self.login, "password": password})
+        else:
+            settings["data"] = {"username": self.login, "password": password}
 
         response = await self.post_request(
             "https://www.instagram.com/accounts/login/ajax/",
-            data=data,
             **settings,
         )
 
@@ -1172,14 +1161,14 @@ class AsyncAgentAccount(Account, AsyncAgent):
     async def update(self, obj=None, settings=None):
         if obj is None:
             obj = self
-        return await super().update(obj, settings=settings)
+        return await AsyncAgent.update(self, obj, settings=settings)
 
     @exception_manager.decorator
     async def get_media(self, obj=None, pointer=None, count=12, limit=12, delay=0, settings=None):
         if obj is None:
             obj = self
-        return await super().get_media(obj, pointer=pointer, count=count, limit=limit, delay=delay,
-                                       settings=settings)
+        return await AsyncAgent.get_media(self, obj, pointer=pointer, count=count, limit=limit,
+                                          delay=delay, settings=settings)
 
     @exception_manager.decorator
     async def get_follows(self, account=None, pointer=None, count=20, limit=50, delay=0,
@@ -1260,7 +1249,7 @@ class AsyncAgentAccount(Account, AsyncAgent):
             raise TypeError("'delay' must be int or float type")
 
         await self.update(account, settings=settings)
-        
+
         if pointer is None:
             variables_string = '{{"id":"{id}","first":{first}}}'
         else:

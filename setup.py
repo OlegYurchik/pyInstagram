@@ -11,6 +11,6 @@ setup(
     description = "",
     long_description = open(join(dirname(__file__), "README.md")).read(),
     packages = find_packages(),
-    install_requires = ["requests", "aiohttp"],
+    install_requires = ["aiohttp", "pytest", "pytest-asyncio", "pytest-random-order", "requests"],
     test_suite = "tests/",
 )

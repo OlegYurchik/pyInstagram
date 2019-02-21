@@ -15,16 +15,15 @@ class InternetException(InstagramException):
                     exception.response.status_code,
                 ),
             )
+            self.request = exception.request
+            self.response = exception.response
         elif isinstance(exception, ClientResponseError):
             super().__init__(
                 "Error by connection with Instagram to '%s' with response code '%s'" % (
-                    exception.request.url,
-                    exception.response.status_code,
+                    exception.request_info.real_url,
+                    exception.status,
                 ),
             )
-
-        self.request = exception.request
-        self.response = exception.response
 
 
 class AuthException(InstagramException):

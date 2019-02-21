@@ -4,7 +4,7 @@ from os.path import join, dirname
 
 setup(
     name = "instaparser",
-    version = "1.1",
+    version = "2.0",
     author = "Oleg Yurchik",
     author_email = "oleg.yurchik@protonmail.com",
     url = "https://github.com/OlegYurchik/pyInstaParser",

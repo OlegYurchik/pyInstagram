@@ -557,14 +557,14 @@ You can run the tests in the following ways:
 1. PyTest from OS
 
 ```bash
-py.test -v -s "tests/entities.py" "tests/anon.py" "tests/auth.py"
+py.test --random-order -v "tests/entities.py" "tests/anon.py" "tests/auth.py"
 ```
 
 2. PyTest from Virtualenv
 
 ```bash
 source VENV/bin/activate
-py.test -v -s "tests/entities.py" "tests/anon.py" "tests/auth.py"
+py.test --random-order -v "tests/entities.py" "tests/anon.py" "tests/auth.py"
 deactivate
 ```
 

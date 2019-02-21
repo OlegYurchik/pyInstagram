@@ -215,7 +215,7 @@ class Agent:
                 raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def get_comments(self, media, pointer=None, count=35, limit=50, delay=0, settings=None):
+    def get_comments(self, media, pointer=None, count=35, limit=32, delay=0, settings=None):
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
         if not isinstance(pointer, str) and not pointer is None:
@@ -260,7 +260,7 @@ class Agent:
             data = {"after": pointer, "code": media.code, "first": min(limit, count)}
 
             response = self.graphql_request(
-                query_hash="33ba35852cb50da46f5b5e889df7d159",
+                query_hash="f0986789a5c5d17c2400faebf16efd0d",
                 variables=variables_string.format(**data),
                 settings=settings,
             )
@@ -301,17 +301,18 @@ class Agent:
         settings = dict() if settings is None else settings.copy()
 
         if not "params" in settings:
-            settings["params"] = {"query_hash": query_hash}
-        else:
-            settings["params"]["query_hash"] = query_hash
+            settings["params"] = dict() 
+        settings["params"].update({"query_hash": query_hash})
 
         settings["params"]["variables"] = variables
         gis = "%s:%s" % (self.rhx_gis, variables)
         if not "headers" in settings:
-            settings["headers"] = {"X-Instagram-GIS": hashlib.md5(gis.encode("utf-8")).hexdigest()}
-        else:
-            settings["headers"]["X-Instagram-GIS"] = hashlib.md5(gis.encode("utf-8")).hexdigest()
-        settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
+            settings["headers"] = dict()
+        settings["headers"].update({
+            "X-IG-App-ID": "936619743392459",
+            "X-Instagram-GIS": hashlib.md5(gis.encode("utf-8")).hexdigest(),
+            "X-Requested-With": "XMLHttpRequest",
+        })
 
         return self.get_request("https://www.instagram.com/graphql/query/", **settings)
 
@@ -571,7 +572,7 @@ class AsyncAgent:
                 raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    async def get_comments(self, media, pointer=None, count=35, limit=50, delay=0, settings=None):
+    async def get_comments(self, media, pointer=None, count=35, limit=32, delay=0, settings=None):
         if not isinstance(media, Media):
             raise TypeError("'media' must be Media type")
         if not isinstance(pointer, str) and not pointer is None:
@@ -616,7 +617,7 @@ class AsyncAgent:
             data = {"after": pointer, "code": media.code, "first": min(limit, count)}
 
             response = await self.graphql_request(
-                query_hash="33ba35852cb50da46f5b5e889df7d159",
+                query_hash="f0986789a5c5d17c2400faebf16efd0d",
                 variables=variables_string.format(**data),
                 settings=settings,
             )
@@ -657,26 +658,20 @@ class AsyncAgent:
         settings = dict() if settings is None else settings.copy()
 
         if not "params" in settings:
-            settings["params"] = {"query_hash": query_hash}
-        else:
-            settings["params"]["query_hash"] = query_hash
+            settings["params"] = dict() 
+        settings["params"].update({"query_hash": query_hash})
 
         settings["params"]["variables"] = variables
         gis = "%s:%s" % (self.rhx_gis, variables)
         if not "headers" in settings:
-            settings["headers"] = {"X-Instagram-GIS": hashlib.md5(gis.encode("utf-8")).hexdigest()}
-        else:
-            settings["headers"]["X-Instagram-GIS"] = hashlib.md5(gis.encode("utf-8")).hexdigest()
-        settings["headers"]["X-Requested-With"] = "XMLHttpRequest"
+            settings["headers"] = dict()
+        settings["headers"].update({
+            "X-IG-App-ID": "936619743392459",
+            "X-Instagram-GIS": hashlib.md5(gis.encode("utf-8")).hexdigest(),
+            "X-Requested-With": "XMLHttpRequest",
+        })
 
-        try:
-            response = await self.get_request(
-                "https://www.instagram.com/graphql/query/",
-                **settings,
-            )
-            return response
-        except (requests.exceptions.RequestException, ConnectionResetError) as exception:
-            raise InternetException(exception)
+        return await self.get_request("https://www.instagram.com/graphql/query/", **settings)
 
     async def action_request(self, referer, url, data=None, settings=None):
         if not isinstance(referer, str):

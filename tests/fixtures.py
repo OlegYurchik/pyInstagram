@@ -1,5 +1,5 @@
 import asyncio
-from instaparser.agents import Agent, AgentAccount, AsyncAgent, AsyncAgentAccount
+from instagram.agents import WebAgent, WebAgentAccount, AsyncWebAgent, AsyncWebAgentAccount
 import pytest
 from random import random
 from tests.settings import creds
@@ -14,23 +14,27 @@ def settings():
 
 
 @pytest.fixture(scope="module")
-def agent(settings):
-    return Agent(settings=settings)
+def agent():
+    return WebAgent()
 
 
 @pytest.fixture(scope="module")
-async def async_agent(settings):
-    return await AsyncAgent.create(settings=settings)
+async def async_agent():
+    return await AsyncWebAgent.create()
 
 
 @pytest.fixture(scope="module")
 def agent_account(settings):
-    return AgentAccount(creds["login"], creds["password"], settings=settings)
+    agent =  WebAgentAccount(creds["username"])
+    agent.auth(password=creds["password"], settings=settings)
+    return agent
 
 
 @pytest.fixture(scope="module")
 async def async_agent_account(settings):
-    return await AsyncAgentAccount.create(creds["login"], creds["password"], settings=settings)
+    agent = await AsyncWebAgentAccount.create(creds["username"])
+    await agent.auth(password=creds["password"], settings=settings)
+    return agent
 
 
 @pytest.fixture(scope="module")

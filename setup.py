@@ -3,11 +3,11 @@ from os.path import join, dirname
 
 
 setup(
-    name = "instaparser",
+    name = "instagram",
     version = "2.0",
     author = "Oleg Yurchik",
     author_email = "oleg.yurchik@protonmail.com",
-    url = "https://github.com/OlegYurchik/pyInstaParser",
+    url = "https://github.com/OlegYurchik/pyInstagram",
     description = "",
     long_description = open(join(dirname(__file__), "README.md")).read(),
     packages = find_packages(),

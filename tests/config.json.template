@@ -1,6 +1,6 @@
 {
     "credentials": {
-        "login": "test",
+        "username": "test",
         "password": "test"
     },
     "accounts": [

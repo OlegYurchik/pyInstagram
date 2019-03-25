@@ -1,15 +1,10 @@
-# pyInstaParser
+# pyInstagram
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](
 https://github.com/OlegYurchik/InstaParser/blob/master/LICENSE)
 [![built with Python3](https://img.shields.io/badge/built%20with-Python3-red.svg)](
 https://www.python.org/)
 [![paypal](https://img.shields.io/badge/-PayPal-blue.svg)](
 https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=YHRDQM5C3MJ3U)
-
-### Important Message
-
-I want to create pyInstaParser with async code. Do you need it? If you have any minds about it,
-please, tell me it in https://github.com/OlegYurchik/pyInstaParser/issues/35
 
 ### What's new?
 

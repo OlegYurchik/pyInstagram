@@ -1,4 +1,4 @@
-from instaparser.entities import Account, Comment, Location, Media, Story, Tag
+from instagram.entities import Account, Comment, Location, Media, Story, Tag
 import pytest
 from random import randint, choice
 from string import ascii_uppercase, ascii_lowercase, digits

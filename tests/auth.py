@@ -1,7 +1,7 @@
 import asyncio
 from .fixtures import agent_account, async_agent_account, event_loop, settings
-from instaparser.agents import AgentAccount, AsyncAgentAccount
-from instaparser.entities import Account, Comment, Location, Media, Story, Tag
+from instagram.agents import WebAgentAccount, AsyncWebAgentAccount
+from instagram.entities import Account, Comment, Location, Media, Story, Tag
 import pytest
 from random import choice, randint, random
 from tests.settings import accounts, auth, creds, locations, photos, photo_sets, tags, videos

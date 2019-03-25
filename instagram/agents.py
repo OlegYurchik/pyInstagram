@@ -307,7 +307,7 @@ class WebAgent:
         if not "headers" in settings:
             settings["headers"] = dict()
         settings["headers"].update({
-            "X-IG-App-ID": "936619743392459",
+            # "X-IG-App-ID": "936619743392459",
             "X-Instagram-GIS": hashlib.md5(gis.encode("utf-8")).hexdigest(),
             "X-Requested-With": "XMLHttpRequest",
         })
@@ -362,13 +362,7 @@ class WebAgent:
 
 
 class AsyncWebAgent:
-    @classmethod
-    async def create(cls, session=None):
-        agent = cls()
-        await agent.__ainit__(session=session)
-        return agent
-
-    async def __ainit__(self, session=None):
+    def __init__(self, session=None):
         self.rhx_gix = None
         self.csrf_token = None
         self.session = aiohttp.ClientSession(raise_for_status=True) if session is None else session
@@ -1096,27 +1090,17 @@ class WebAgentAccount(Account, WebAgent):
 
 
 class AsyncWebAgentAccount(Account, AsyncWebAgent):
-    @classmethod
-    async def create(cls, username, session=None):
-        agent = cls(username)
-        await agent.__ainit__(username, session=session)
-        return agent
-
-    def __init__(self, username):
-        pass
-
-    def __del__(self):
-        Account.__del__(self)
-        self.session.close()
-
-    @exception_manager.decorator
-    async def __ainit__(self, username, session=None):
+    def __init__(self, username, session=None):
         if not isinstance(username, str):
             raise TypeError("'username' must be str type")
 
         Account.__init__(self, username)
-        await AsyncWebAgent.__ainit__(self, session=session)
+        AsyncWebAgent.__init__(self, session=session)
 
+    def __del__(self):
+        Account.__del__(self)
+        self.session.close()
+        
     async def auth(self, password, settings=None):
         if not isinstance(password, str):
             raise TypeError("'password' must be str type")

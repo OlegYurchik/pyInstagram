@@ -20,7 +20,7 @@ def agent():
 
 @pytest.fixture(scope="module")
 async def async_agent():
-    return await AsyncWebAgent.create()
+    return AsyncWebAgent()
 
 
 @pytest.fixture(scope="module")
@@ -32,7 +32,7 @@ def agent_account(settings):
 
 @pytest.fixture(scope="module")
 async def async_agent_account(settings):
-    agent = await AsyncWebAgentAccount.create(creds["username"])
+    agent = AsyncWebAgentAccount(creds["username"])
     await agent.auth(password=creds["password"], settings=settings)
     return agent
 

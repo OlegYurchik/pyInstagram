@@ -1290,12 +1290,12 @@ class WebAgentAccount(Account, WebAgent):
 
 
 class AsyncWebAgentAccount(Account, AsyncWebAgent):
-    def __init__(self, username, session=None):
+    def __init__(self, username, session=None, logger=None):
         if not isinstance(username, str):
             raise TypeError("'username' must be str type")
 
         Account.__init__(self, username)
-        AsyncWebAgent.__init__(self, session=session)
+        AsyncWebAgent.__init__(self, session=session, logger=logger)
 
     def __del__(self):
         Account.__del__(self)

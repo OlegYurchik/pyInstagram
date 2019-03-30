@@ -130,7 +130,10 @@ class Media(UpdatableElement):
         if "location" in data and data["location"] and "id" in data["location"]:
             self.location = Location(data["location"]["id"])
         self.likes_count = data["edge_media_preview_like"]["count"]
-        self.comments_count = data["edge_media_to_comment"]["count"]
+        if "edge_media_to_comment" in data:
+            self.comments_count = data["edge_media_to_comment"]["count"]
+        else:
+            self.comments_count = data["edge_media_to_parent_comment"]["count"]
         self.comments_disabled = data["comments_disabled"]
         self.is_video = data["is_video"]
         if self.is_video and "video_url" in data:

@@ -263,7 +263,10 @@ class WebAgent:
 
         if pointer is None:
             try:
-                data = data["edge_media_to_comment"]
+                if "edge_media_to_comment" in data:
+                    data = data["edge_media_to_comment"]
+                else:
+                    data = data["edge_media_to_parent_comment"]
                 edges = data["edges"]
                 page_info = data["page_info"]
                 
@@ -662,7 +665,10 @@ class AsyncWebAgent:
 
         if pointer is None:
             try:
-                data = data["edge_media_to_comment"]
+                if "edge_media_to_comment" in data:
+                    data = data["edge_media_to_comment"]
+                else:
+                    data = data["edge_media_to_parent_comment"]
                 edges = data["edges"]
                 page_info = data["page_info"]
 

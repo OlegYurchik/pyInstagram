@@ -1249,7 +1249,7 @@ class WebAgentAccount(Account, WebAgent):
             self.update(account, settings=settings)
 
         response = self.action_request(
-            referer="https://www.instagram.com/%s" % account.login,
+            referer="https://www.instagram.com/%s" % account.username,
             url="https://www.instagram.com/web/friendships/%s/follow/" % account.id,
             settings=settings,
         )
@@ -1275,7 +1275,7 @@ class WebAgentAccount(Account, WebAgent):
             self.update(account, settings=settings)
 
         response = self.action_request(
-            referer="https://www.instagram.com/%s" % account.login,
+            referer="https://www.instagram.com/%s" % account.username,
             url="https://www.instagram.com/web/friendships/%s/unfollow/" % account.id,
             settings=settings,
         )
@@ -1740,7 +1740,7 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
             await self.update(account, settings=settings)
 
         response = await self.action_request(
-            referer="https://www.instagram.com/%s" % account.login,
+            referer="https://www.instagram.com/%s" % account.username,
             url="https://www.instagram.com/web/friendships/%s/follow/" % account.id,
             settings=settings,
         )
@@ -1766,7 +1766,7 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
             await self.update(account, settings=settings)
 
         response = await self.action_request(
-            referer="https://www.instagram.com/%s" % account.login,
+            referer="https://www.instagram.com/%s" % account.username,
             url="https://www.instagram.com/web/friendships/%s/unfollow/" % account.id,
             settings=settings,
         )

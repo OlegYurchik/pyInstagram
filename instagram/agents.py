@@ -3,8 +3,9 @@ import asyncio
 import hashlib
 from .entities import (Account, Comment, Element, HasMediaElement,Media, Location, Story, Tag,
                        UpdatableElement)
-from .exceptions import (AuthException, ExceptionManager, InstagramException, InternetException,
-                         UnexpectedResponse, NotUpdatedElement)
+from .exceptions import (AuthException, CheckpointException, ExceptionManager,
+                         IncorrectVerificationTypeException, InstagramException,
+                         InternetException, UnexpectedResponse, NotUpdatedElement)
 import json
 import re
 import requests
@@ -16,10 +17,12 @@ exception_manager = ExceptionManager()
 
 
 class WebAgent:
-    def __init__(self, session=None, logger=None):
+    def __init__(self, cookies=None, logger=None):
         self.rhx_gis = None
         self.csrf_token = None
-        self.session = requests.Session() if session is None else session
+        self.session = requests.Session()
+        if cookies:
+            self.session.cookies = requests.cookies.cookiejar_from_dict(cookies)
         self.logger = logger
 
     @exception_manager.decorator
@@ -82,13 +85,12 @@ class WebAgent:
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        data = self.update(obj, settings=settings)
-
         variables_string = '{{"{name}":"{name_value}","first":{first},"after":"{after}"}}'
         medias = []
 
         if pointer is None:
             try:
+                data = self.update(obj, settings=settings)
                 data = data[obj.media_path[-1]]
 
                 page_info = data["page_info"]
@@ -187,7 +189,8 @@ class WebAgent:
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        self.update(media, settings=settings)
+        if media.id is None:
+            self.update(media, settings=settings)
 
         if pointer:
             variables_string = '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
@@ -257,12 +260,11 @@ class WebAgent:
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        data = self.update(media, settings=settings)
-
         comments = []
 
         if pointer is None:
             try:
+                data = self.update(media, settings=settings)
                 if "edge_media_to_comment" in data:
                     data = data["edge_media_to_comment"]
                 else:
@@ -412,10 +414,10 @@ class WebAgent:
 
 
 class AsyncWebAgent:
-    def __init__(self, session=None, logger=None):
+    def __init__(self, cookies=None, logger=None):
         self.rhx_gix = None
         self.csrf_token = None
-        self.session = aiohttp.ClientSession(raise_for_status=True) if session is None else session
+        self.session = aiohttp.ClientSession(raise_for_status=True, cookies=cookies)
         self.logger = logger
 
     async def delete(self):
@@ -481,13 +483,12 @@ class AsyncWebAgent:
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        data = await self.update(obj, settings=settings)
-
         variables_string = '{{"{name}":"{name_value}","first":{first},"after":"{after}"}}'
         medias = []
 
         if pointer is None:
             try:
+                data = await self.update(obj, settings=settings)
                 data = data[obj.media_path[-1]]
 
                 page_info = data["page_info"]
@@ -589,7 +590,8 @@ class AsyncWebAgent:
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        await self.update(media, settings=settings)
+        if media.id is None:
+            await self.update(media, settings=settings)
 
         if pointer:
             variables_string = '{{"shortcode":"{shortcode}","first":{first},"after":"{after}"}}'
@@ -659,12 +661,11 @@ class AsyncWebAgent:
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        data = await self.update(media, settings=settings)
-
         comments = []
 
         if pointer is None:
             try:
+                data = await self.update(media, settings=settings)
                 if "edge_media_to_comment" in data:
                     data = data["edge_media_to_comment"]
                 else:
@@ -819,12 +820,12 @@ class AsyncWebAgent:
 
 class WebAgentAccount(Account, WebAgent):
     @exception_manager.decorator
-    def __init__(self, username, session=None, logger=None):
+    def __init__(self, username, cookies=None, logger=None):
         if not isinstance(username, str):
             raise TypeError("'username' must be str type")
 
         Account.__init__(self, username)
-        WebAgent.__init__(self, session=session, logger=logger)
+        WebAgent.__init__(self, cookies=cookies, logger=logger)
 
     @exception_manager.decorator
     def auth(self, password, settings=None):
@@ -857,18 +858,106 @@ class WebAgentAccount(Account, WebAgent):
         else:
             settings["data"] = {"username": self.username, "password": password}
 
-        response = self.post_request("https://www.instagram.com/accounts/login/ajax/", **settings)
+        try:
+            response = self.post_request(
+                "https://www.instagram.com/accounts/login/ajax/",
+                **settings,
+            )
+        except InternetException as exception:
+            response = exception.response
 
         try:
             data = response.json()
-            if not data["authenticated"]:
+            if data.get("authenticated") is False:
                 raise AuthException(self.username)
+            elif data.get("message") == "checkpoint_required":
+                raise CheckpointException(
+                    self.username,
+                    "https://instagram.com" + data.get("checkpoint_url"),
+                )
         except (ValueError, KeyError) as exception:
             if not self.logger is None:
                 self.logger.error("Auth was unsuccessfully: %s", str(exception))
             raise UnexpectedResponse(exception, response.url)
         if not self.logger is None:
             self.logger.info("Auth was successfully")
+
+    @exception_manager.decorator
+    def checkpoint_send(self, url, type, settings=None):
+        response = self.get_request(url)
+        try:
+            match = re.search(
+                r"<script[^>]*>\s*window._sharedData\s*=\s*((?!<script>).*)\s*;\s*</script>",
+                response.text,
+            )
+            data = json.loads(match.group(1))
+            data = data["entry_data"]["Challenge"][0]
+
+            navigation = {
+                key: "https://instagram.com" + value for key, value in data["navigation"].items()
+            }
+
+            data = data["extraData"]["content"]
+            data = list(filter(lambda item: item["__typename"] == "GraphChallengePageForm", data))
+            data = data[0]["fields"][0]["values"]
+            for field in data:
+                if type == field["label"].lower()[:len(type)]:
+                    choice = field["value"]
+                    break
+            else:
+                raise IncorrectVerificationTypeException(self.username, type)
+        except (AttributeError, KeyError, ValueError) as exception:
+            if not self.logger is None:
+                self.logger.error(
+                    "Send verify code for '%s' was unsuccessfull: %s",
+                    self.username,
+                    str(exception),
+                )
+            raise UnexpectedResponse(exception, response.url)
+
+        response = self.action_request(
+            referer=url,
+            url=navigation["forward"],
+            data={"choice": choice},
+        )
+        return navigation
+
+    @exception_manager.decorator
+    def checkpoint_replay(self, navigation):
+        response = self.action_request(
+            referer=navigation["forward"],
+            url=navigation["replay"],
+        )
+        try:
+            return response.json()["navigation"]
+        except (AttributeError, KeyError, ValueError) as exception:
+            if not self.logger is None:
+                self.logger.error(
+                    "Resend verify code for '%s' was unsuccessfull: %s",
+                    self.username,
+                    str(exception),
+                )
+            raise UnexpectedResponse(exception, response.url)
+
+
+    @exception_manager.decorator
+    def checkpoint(self, navigation, code):
+        response = self.action_request(
+            referer=navigation["forward"],
+            url=navigation["forward"],
+            data={"security_code": code},
+        )
+
+        try:
+            return response.json()["status"] == "ok"
+        except (AttributeError, KeyError, ValueError) as exception:
+            if not self.logger is None:
+                self.logger.error(
+                    "Verify account '%s' was unsuccessfull: %s",
+                    self.username,
+                    str(exception),
+                )
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
     def update(self, obj=None, settings=None):
@@ -900,7 +989,8 @@ class WebAgentAccount(Account, WebAgent):
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        self.update(account, settings=settings)
+        if account.id is None:
+            self.update(account, settings=settings)
 
         if pointer is None:
             variables_string = '{{"id":"{id}","first":{first}}}'
@@ -975,7 +1065,8 @@ class WebAgentAccount(Account, WebAgent):
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        self.update(account, settings=settings)
+        if account.id is None:
+            self.update(account, settings=settings)
 
         if pointer is None:
             variables_string = '{{"id":"{id}","first":{first}}}'
@@ -1296,12 +1387,12 @@ class WebAgentAccount(Account, WebAgent):
 
 
 class AsyncWebAgentAccount(Account, AsyncWebAgent):
-    def __init__(self, username, session=None, logger=None):
+    def __init__(self, username, cookies=None, logger=None):
         if not isinstance(username, str):
             raise TypeError("'username' must be str type")
 
         Account.__init__(self, username)
-        AsyncWebAgent.__init__(self, session=session, logger=logger)
+        AsyncWebAgent.__init__(self, cookies=cookies, logger=logger)
 
     def __del__(self):
         Account.__del__(self)
@@ -1346,14 +1437,96 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
 
         try:
             data = await response.json()
-            if not data["authenticated"]:
+            if data.get("authenticated") is False:
                 raise AuthException(self.username)
+            elif data.get("message") == "checkpoint_required":
+                raise CheckpointException(
+                    self.username,
+                    "https://instagram.com" + data.get("checkpoint_url"),
+                )
         except (ValueError, KeyError) as exception:
             if not self.logger is None:
                 self.logger.error("Auth was unsuccessfully: %s", str(exception))
             raise UnexpectedResponse(exception, response.url)
         if not self.logger is None:
             self.logger.info("Auth was successfully")       
+
+    @exception_manager.decorator
+    async def checkpoint_send(self, url, type, settings=None):
+        response = await self.get_request(url)
+        try:
+            match = re.search(
+                r"<script[^>]*>\s*window._sharedData\s*=\s*((?!<script>).*)\s*;\s*</script>",
+                await response.text(),
+            )
+            data = json.loads(match.group(1))
+            data = data["entry_data"]["Challenge"][0]
+
+            navigation = {
+                key: "https://instagram.com" + value for key, value in data["navigation"].items()
+            }
+
+            data = data["extraData"]["content"]
+            data = list(filter(lambda item: item["__typename"] == "GraphChallengePageForm", data))
+            data = data[0]["fields"][0]["values"]
+            for field in data:
+                if type == field["label"].lower()[:len(type)]:
+                    choice = field["value"]
+                    break
+            else:
+                raise IncorrectVerificationTypeException(self.username, type)
+        except (AttributeError, KeyError, ValueError) as exception:
+            if not self.logger is None:
+                self.logger.error(
+                    "Send verify code for '%s' was unsuccessfull: %s",
+                    self.username,
+                    str(exception),
+                )
+            raise UnexpectedResponse(exception, response.url)
+
+        response = await self.action_request(
+            referer=url,
+            url=navigation["forward"],
+            data={"choice": choice},
+        )
+        return navigation
+
+    @exception_manager.decorator
+    async def checkpoint_replay(self, navigation):
+        response = await self.action_request(
+            referer=navigation["forward"],
+            url=navigation["replay"],
+        )
+        try:
+            return (await response.json())["navigation"]
+        except (AttributeError, KeyError, ValueError) as exception:
+            if not self.logger is None:
+                self.logger.error(
+                    "Resend verify code for '%s' was unsuccessfull: %s",
+                    self.username,
+                    str(exception),
+                )
+            raise UnexpectedResponse(exception, response.url)
+
+
+    @exception_manager.decorator
+    async def checkpoint(self, navigation, code):
+        response = await self.action_request(
+            referer=navigation["forward"],
+            url=navigation["forward"],
+            data={"security_code": code},
+        )
+
+        try:
+            return (await response.json())["status"] == "ok"
+        except (AttributeError, KeyError, ValueError) as exception:
+            if not self.logger is None:
+                self.logger.error(
+                    "Verify account '%s' was unsuccessfull: %s",
+                    self.username,
+                    str(exception),
+                )
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
     async def update(self, obj=None, settings=None):
@@ -1386,7 +1559,8 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        await self.update(account, settings=settings)
+        if account.id is None:
+            await self.update(account, settings=settings)
 
         if pointer is None:
             variables_string = '{{"id":"{id}","first":{first}}}'
@@ -1462,7 +1636,8 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         if not isinstance(delay, (int, float)):
             raise TypeError("'delay' must be int or float type")
 
-        await self.update(account, settings=settings)
+        if account.id is None:
+            await self.update(account, settings=settings)
 
         if pointer is None:
             variables_string = '{{"id":"{id}","first":{first}}}'

@@ -27,8 +27,20 @@ class InternetException(InstagramException):
 
 
 class AuthException(InstagramException):
-    def __init__(self, login):
-        super().__init__("Cannot auth user with username '%s'" % login)
+    def __init__(self, username, message=""):
+        super().__init__("Cannot auth user with username '%s': %s" % (username, message))
+
+
+class CheckpointException(AuthException):
+    def __init__(self, username, checkpoint_url):
+        super().__init__(username, "need verification by checkpoint")
+        self.checkpoint_url = checkpoint_url
+
+
+class IncorrectVerificationTypeException(AuthException):
+    def __init__(self, username, type):
+        super().__init__(username, "incorrect verification type '%s'" % type)
+        self.type = type
 
 
 class UnexpectedResponse(InstagramException):

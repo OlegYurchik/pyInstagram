@@ -1430,10 +1430,13 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         else:
             settings["data"] = {"username": self.username, "password": password}
 
-        response = await self.post_request(
-            "https://www.instagram.com/accounts/login/ajax/",
-            **settings,
-        )
+        try:
+            response = await self.post_request(
+                "https://www.instagram.com/accounts/login/ajax/",
+                **settings,
+            )
+        except InternetException as exception:
+            response = exception.response
 
         try:
             data = await response.json()

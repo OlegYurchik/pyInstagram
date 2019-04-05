@@ -417,7 +417,7 @@ class AsyncWebAgent:
     def __init__(self, cookies=None, logger=None):
         self.rhx_gix = None
         self.csrf_token = None
-        self.session = aiohttp.ClientSession(raise_for_status=True, cookies=cookies)
+        self.session = aiohttp.ClientSession(cookies=cookies)
         self.logger = logger
 
     async def delete(self):
@@ -807,14 +807,14 @@ class AsyncWebAgent:
         try:
             response = await self.session.get(*args, **kwargs)
             return response
-        except Exception as exception:
+        except aiohttp.ClientResponseError as exception:
             raise InternetException(exception)
 
     async def post_request(self, *args, **kwargs):
         try:
             response = await self.session.post(*args, **kwargs)
             return response
-        except Exception as exception:
+        except aiohttp.ClientResponseError as exception:
             raise InternetException(exception)
 
 
@@ -1430,13 +1430,10 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         else:
             settings["data"] = {"username": self.username, "password": password}
 
-        try:
-            response = await self.post_request(
-                "https://www.instagram.com/accounts/login/ajax/",
-                **settings,
-            )
-        except InternetException as exception:
-            response = exception.response
+        response = await self.post_request(
+            "https://www.instagram.com/accounts/login/ajax/",
+            **settings,
+        )
 
         try:
             data = await response.json()

@@ -24,7 +24,6 @@ class InternetException(InstagramException):
                     exception.status,
                 ),
             )
-            self.response = exception.history[-1]
 
 
 class AuthException(InstagramException):

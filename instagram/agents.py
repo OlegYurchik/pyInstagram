@@ -1436,7 +1436,7 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
                 **settings,
             )
         except InternetException as exception:
-            response = exception.response
+            response = exception.history[-1]
 
         try:
             data = await response.json()

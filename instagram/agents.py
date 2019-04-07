@@ -800,20 +800,17 @@ class AsyncWebAgent:
         else:
             settings["data"] = data
 
-        response = await self.post_request(url, **settings)
-        return response
+        return await self.post_request(url, **settings)
 
     async def get_request(self, *args, **kwargs):
         try:
-            response = await self.session.get(*args, **kwargs)
-            return response
+            return await self.session.get(*args, **kwargs)
         except aiohttp.ClientResponseError as exception:
             raise InternetException(exception)
 
     async def post_request(self, *args, **kwargs):
         try:
-            response = await self.session.post(*args, **kwargs)
-            return response
+            return await self.session.post(*args, **kwargs)
         except aiohttp.ClientResponseError as exception:
             raise InternetException(exception)
 
@@ -839,24 +836,17 @@ class WebAgentAccount(Account, WebAgent):
 
         self.update(settings=settings)
 
-        if "headers" in settings:
-            settings["headers"].update({
-                # "X-IG-App-ID": "936619743392459",
-                # "X_Instagram-AJAX": "ee72defd9231",
-                "X-CSRFToken": self.csrf_token,
-                "Referer": "https://www.instagram.com/",
-            })
-        else:
-            settings["headers"] = {
-                # "X-IG-App-ID": "936619743392459",
-                # "X_Instagram-AJAX": "ee72defd9231",
-                "X-CSRFToken": self.csrf_token,
-                "Referer": "https://www.instagram.com/",
-            }
-        if "data" in settings:
-            settings["data"].update({"username": self.username, "password": password})
-        else:
-            settings["data"] = {"username": self.username, "password": password}
+        if not "headers" in settings:
+            settings["headers"] = {}
+        settings["headers"].update({
+            "X-IG-App-ID": "936619743392459",
+            # "X_Instagram-AJAX": "ee72defd9231",
+            "X-CSRFToken": self.csrf_token,
+            "Referer": "https://www.instagram.com/",
+        })
+        if not "data" in settings:
+            settings["data"] = {}
+        settings["data"].update({"username": self.username, "password": password})
 
         try:
             response = self.post_request(
@@ -1399,7 +1389,7 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
 
     async def delete(self):    
         await self.session.close()
-        
+
     async def auth(self, password, settings=None):
         if not self.logger is None:
             self.logger.info("Auth started")
@@ -1411,24 +1401,17 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
 
         await self.update(settings=settings)
 
-        if "headers" in settings:
-            settings["headers"].update({
-                # "X-IG-App-ID": "936619743392459",
-                # "X_Instagram-AJAX": "ee72defd9231",
-                "X-CSRFToken": self.csrf_token,
-                "Referer": "https://www.instagram.com/",
-            })
-        else:
-            settings["headers"] = {
-                # "X-IG-App-ID": "936619743392459",
-                # "X_Instagram-AJAX": "ee72defd9231",
-                "X-CSRFToken": self.csrf_token,
-                "Referer": "https://www.instagram.com/",
-            }
-        if "data" in settings:
-            settings["data"].update({"username": self.username, "password": password})
-        else:
-            settings["data"] = {"username": self.username, "password": password}
+        if not "headers" in settings:
+            settings["headers"] = {}
+        settings["headers"].update({
+            "X-IG-App-ID": "936619743392459",
+            # "X_Instagram-AJAX": "ee72defd9231",
+            "X-CSRFToken": self.csrf_token,
+            "Referer": "https://www.instagram.com/",
+        })
+        if not "data" in settings:
+            settings["data"] = {}
+        settings["data"].update({"username": self.username, "password": password})
 
         response = await self.post_request(
             "https://www.instagram.com/accounts/login/ajax/",
@@ -1440,9 +1423,14 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
             if data.get("authenticated") is False:
                 raise AuthException(self.username)
             elif data.get("message") == "checkpoint_required":
+                data = await self.checkpoint_handle(
+                    url="https://instagram.com" + data.get("checkpoint_url"),
+                    settings=settings,
+                )
                 raise CheckpointException(
                     self.username,
-                    "https://instagram.com" + data.get("checkpoint_url"),
+                    checkpoint_url=data["navigation"]["forward"],
+                    types=data["types"],
                 )
         except (ValueError, KeyError) as exception:
             if not self.logger is None:
@@ -1451,8 +1439,7 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         if not self.logger is None:
             self.logger.info("Auth was successfully")       
 
-    @exception_manager.decorator
-    async def checkpoint_send(self, url, type, settings=None):
+    async def checkpoint_handle(self, url, settings=None):
         response = await self.get_request(url)
         try:
             match = re.search(
@@ -1469,33 +1456,44 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
             data = data["extraData"]["content"]
             data = list(filter(lambda item: item["__typename"] == "GraphChallengePageForm", data))
             data = data[0]["fields"][0]["values"]
-            for field in data:
-                if type == field["label"].lower()[:len(type)]:
-                    choice = field["value"]
-                    break
-            else:
-                raise IncorrectVerificationTypeException(self.username, type)
+            types = []
+            for d in data:
+                types.append({"label": d["label"].lower().split(":")[0], "value": d["value"]})
+            return {"navigation": navigation, "types": types}
         except (AttributeError, KeyError, ValueError) as exception:
             if not self.logger is None:
                 self.logger.error(
-                    "Send verify code for '%s' was unsuccessfull: %s",
+                    "Handle checkpoint page for '%s' was unsuccessfull: %s",
                     self.username,
                     str(exception),
                 )
             raise UnexpectedResponse(exception, response.url)
 
+    @exception_manager.decorator
+    async def checkpoint_send(self, referer, url, choice, settings=None):
         response = await self.action_request(
-            referer=url,
-            url=navigation["forward"],
+            referer=referer,
+            url=url,
             data={"choice": choice},
         )
-        return navigation
+
+        try:
+            return (await response.json())["navigation"]
+        except (ValueError, KeyError) as exception:
+            if not self.logger is None:
+                self.logger.error(
+                    "Send verify code by %s to '%s' was unsuccessfully: %s",
+                    type,
+                    self.username,
+                    str(exception),
+                )
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    async def checkpoint_replay(self, navigation):
+    async def checkpoint_replay(self, forward, replay):
         response = await self.action_request(
-            referer=navigation["forward"],
-            url=navigation["replay"],
+            referer=forward,
+            url=replay,
         )
         try:
             return (await response.json())["navigation"]
@@ -1508,12 +1506,11 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
                 )
             raise UnexpectedResponse(exception, response.url)
 
-
     @exception_manager.decorator
-    async def checkpoint(self, navigation, code):
+    async def checkpoint(self, url, code):
         response = await self.action_request(
-            referer=navigation["forward"],
-            url=navigation["forward"],
+            referer=url,
+            url=url,
             data={"security_code": code},
         )
 

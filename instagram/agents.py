@@ -1484,9 +1484,9 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
 
         try:
             navigation = (await response.json())["navigation"]
-            return {"navigation": {
+            return {
                 key: "https://instagram.com" + value for key, value in navigation.items()
-            }}
+            }
         except (ValueError, KeyError) as exception:
             if not self.logger is None:
                 self.logger.error(
@@ -1505,9 +1505,9 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         )
         try:
             navigation = (await response.json())["navigation"]
-            return {"navigation": {
+            return {
                 key: "https://instagram.com" + value for key, value in navigation.items()
-            }}
+            }
         except (AttributeError, KeyError, ValueError) as exception:
             if not self.logger is None:
                 self.logger.error(

@@ -32,9 +32,10 @@ class AuthException(InstagramException):
 
 
 class CheckpointException(AuthException):
-    def __init__(self, username, checkpoint_url, types):
+    def __init__(self, username, checkpoint_url, navigation, types):
         super().__init__(username, "need verification by checkpoint")
         self.checkpoint_url = checkpoint_url
+        self.navigation = navigation
         self.types = types
 
 

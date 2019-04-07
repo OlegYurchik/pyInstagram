@@ -861,9 +861,11 @@ class WebAgentAccount(Account, WebAgent):
             if data.get("authenticated") is False:
                 raise AuthException(self.username)
             elif data.get("message") == "checkpoint_required":
+                await agent.checkpoint_handle()
                 raise CheckpointException(
-                    self.username,
-                    "https://instagram.com" + data.get("checkpoint_url"),
+                    username=self.username,
+                    checkpoint_url="https://instagram.com" + data.get("checkpoint_url"),
+                    types=data.get
                 )
         except (ValueError, KeyError) as exception:
             if not self.logger is None:
@@ -928,7 +930,6 @@ class WebAgentAccount(Account, WebAgent):
                     str(exception),
                 )
             raise UnexpectedResponse(exception, response.url)
-
 
     @exception_manager.decorator
     def checkpoint(self, navigation, code):
@@ -1423,13 +1424,15 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
             if data.get("authenticated") is False:
                 raise AuthException(self.username)
             elif data.get("message") == "checkpoint_required":
+                checkpoint_url = "https://instagram.com" + data.get("checkpoint_url")
                 data = await self.checkpoint_handle(
-                    url="https://instagram.com" + data.get("checkpoint_url"),
+                    url=checkpoint_url,
                     settings=settings,
                 )
                 raise CheckpointException(
-                    self.username,
-                    checkpoint_url=data["navigation"]["forward"],
+                    username=self.username,
+                    checkpoint_url=checkpoint_url,
+                    navigation=data["navigation"],
                     types=data["types"],
                 )
         except (ValueError, KeyError) as exception:
@@ -1439,6 +1442,7 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         if not self.logger is None:
             self.logger.info("Auth was successfully")       
 
+    @exception_manager.decorator
     async def checkpoint_handle(self, url, settings=None):
         response = await self.get_request(url)
         try:
@@ -1470,10 +1474,10 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    async def checkpoint_send(self, referer, url, choice, settings=None):
+    async def checkpoint_send(self, checkpoint_url, forward_url, choice, settings=None):
         response = await self.action_request(
-            referer=referer,
-            url=url,
+            referer=checkpoint_url,
+            url=forward_url,
             data={"choice": choice},
         )
 

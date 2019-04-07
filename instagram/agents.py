@@ -861,11 +861,12 @@ class WebAgentAccount(Account, WebAgent):
             if data.get("authenticated") is False:
                 raise AuthException(self.username)
             elif data.get("message") == "checkpoint_required":
-                await agent.checkpoint_handle()
+                # agent.checkpoint_handle()
                 raise CheckpointException(
                     username=self.username,
                     checkpoint_url="https://instagram.com" + data.get("checkpoint_url"),
-                    types=data.get
+                    navigation=None,
+                    types=None,
                 )
         except (ValueError, KeyError) as exception:
             if not self.logger is None:

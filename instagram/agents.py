@@ -1526,7 +1526,9 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         )
 
         try:
-            return (await response.json())["status"] == "ok"
+            response = await response.json()
+            self.logger.info("RESPONSE: %s", response)
+            return response["status"] == "ok"
         except (AttributeError, KeyError, ValueError) as exception:
             if not self.logger is None:
                 self.logger.error(

@@ -800,6 +800,7 @@ class AsyncWebAgent:
         else:
             settings["data"] = data
 
+        self.logger.info("SETTINGS: %s", settings)
         return await self.post_request(url, **settings)
 
     async def get_request(self, *args, **kwargs):
@@ -1526,9 +1527,7 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         )
 
         try:
-            response = await response.json()
-            self.logger.info("RESPONSE: %s", response)
-            return response["status"] == "ok"
+            return (await response.json())["status"] == "ok"
         except (AttributeError, KeyError, ValueError) as exception:
             if not self.logger is None:
                 self.logger.error(

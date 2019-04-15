@@ -290,6 +290,12 @@ class WebAgent:
                         self.logger.info("Get comments '%s' was successfull", media)
                     return comments, pointer
             except (ValueError, KeyError) as exception:
+                if not self.logger is None:
+                    self.logger.error(
+                        "Get comments '%s' was unsuccessfull: %s",
+                        media,
+                        str(exception),
+                    )
                 raise UnexpectedResponse(exception, media)
 
         variables_string = '{{"shortcode":"{code}","first":{first},"after":"{after}"}}'
@@ -393,8 +399,7 @@ class WebAgent:
         else:
             settings["data"] = data
 
-        response = self.post_request(url, **settings)
-        return response
+        return self.post_request(url, **settings)
 
     def get_request(self, *args, **kwargs):
         try:
@@ -461,7 +466,7 @@ class AsyncWebAgent:
             return data
         except (AttributeError, KeyError, ValueError) as exception:
             if not self.logger is None:
-                self.logger.error(
+                self.logger.exception(
                     "Update '%s' was unsuccessfull: %s",
                     "self" if obj is None else obj,
                     str(exception),
@@ -773,7 +778,7 @@ class AsyncWebAgent:
 
         return await self.get_request("https://www.instagram.com/graphql/query/", **settings)
 
-    async def action_request(self, referer, url, data=None, settings=None):
+    async def action_request(self, url, referer, data=None, settings=None):
         if not isinstance(referer, str):
             raise TypeError("'referer' must be str type")
         if not isinstance(url, str):
@@ -800,7 +805,6 @@ class AsyncWebAgent:
         else:
             settings["data"] = data
 
-        self.logger.info("SETTINGS: %s", settings)
         return await self.post_request(url, **settings)
 
     async def get_request(self, *args, **kwargs):
@@ -862,12 +866,16 @@ class WebAgentAccount(Account, WebAgent):
             if data.get("authenticated") is False:
                 raise AuthException(self.username)
             elif data.get("message") == "checkpoint_required":
-                # agent.checkpoint_handle()
+                checkpoint_url = "https://instagram.com" + data.get("checkpoint_url")
+                data = self.checkpoint_handle(
+                    url=checkpoint_url,
+                    settings=settings,
+                )
                 raise CheckpointException(
                     username=self.username,
-                    checkpoint_url="https://instagram.com" + data.get("checkpoint_url"),
-                    navigation=None,
-                    types=None,
+                    checkpoint_url=checkpoint_url,
+                    navigation=data["navigation"],
+                    types=data["types"],
                 )
         except (ValueError, KeyError) as exception:
             if not self.logger is None:
@@ -877,7 +885,9 @@ class WebAgentAccount(Account, WebAgent):
             self.logger.info("Auth was successfully")
 
     @exception_manager.decorator
-    def checkpoint_send(self, url, type, settings=None):
+    def checkpoint_handle(self, url, settings=None):
+        if not self.logger is None:
+            self.logger.info("Handle checkpoint page for '%s' started", self.username)
         response = self.get_request(url)
         try:
             match = re.search(
@@ -894,36 +904,63 @@ class WebAgentAccount(Account, WebAgent):
             data = data["extraData"]["content"]
             data = list(filter(lambda item: item["__typename"] == "GraphChallengePageForm", data))
             data = data[0]["fields"][0]["values"]
-            for field in data:
-                if type == field["label"].lower()[:len(type)]:
-                    choice = field["value"]
-                    break
-            else:
-                raise IncorrectVerificationTypeException(self.username, type)
+            types = []
+            for d in data:
+                types.append({"label": d["label"].lower().split(":")[0], "value": d["value"]})
+            if not self.logger is None:
+                self.logger.info("Handle checkpoint page for '%s' was successfull", self.username)
+            return {"navigation": navigation, "types": types}
         except (AttributeError, KeyError, ValueError) as exception:
             if not self.logger is None:
                 self.logger.error(
-                    "Send verify code for '%s' was unsuccessfull: %s",
+                    "Handle checkpoint page for '%s' was unsuccessfull: %s",
                     self.username,
                     str(exception),
                 )
             raise UnexpectedResponse(exception, response.url)
 
+    @exception_manager.decorator
+    def checkpoint_send(self, checkpoint_url, forward_url, choice, settings=None):
+        if not self.logger is None:
+            self.logger.info("Send verify code for '%s' started", self.username)
         response = self.action_request(
-            referer=url,
-            url=navigation["forward"],
+            referer=checkpoint_url,
+            url=forward_url,
             data={"choice": choice},
         )
-        return navigation
+
+        try:
+            navigation = response.json()["navigation"]
+            if not self.logger is None:
+                self.logger.info("Send verify code for '%s' was successfully", self.username)
+            return {
+                key: "https://instagram.com" + value for key, value in navigation.items()
+            }
+        except (ValueError, KeyError) as exception:
+            if not self.logger is None:
+                self.logger.error(
+                    "Send verify code by %s to '%s' was unsuccessfully: %s",
+                    type,
+                    self.username,
+                    str(exception),
+                )
+            raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def checkpoint_replay(self, navigation):
+    def checkpoint_replay(self, forward, replay):
+        if not self.logger is None:
+            self.logger.info("Resend verify code for '%s' started")
         response = self.action_request(
-            referer=navigation["forward"],
-            url=navigation["replay"],
+            referer=forward,
+            url=replay,
         )
         try:
-            return response.json()["navigation"]
+            navigation = response.json()["navigation"]
+            if not self.logger is None:
+                self.logger.info("Resend verify code for '%s' was successfull")
+            return {
+                key: "https://instagram.com" + value for key, value in navigation.items()
+            }
         except (AttributeError, KeyError, ValueError) as exception:
             if not self.logger is None:
                 self.logger.error(
@@ -934,15 +971,20 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def checkpoint(self, navigation, code):
+    def checkpoint(self, url, code):
+        if not self.logger is None:
+            self.logger.info("Verify account '%s' started")
         response = self.action_request(
-            referer=navigation["forward"],
-            url=navigation["forward"],
+            referer=url,
+            url=url,
             data={"security_code": code},
         )
 
         try:
-            return response.json()["status"] == "ok"
+            result = response.json()["status"] == "ok"
+            if not self.logger is None:
+                self.logger.info("Verify account '%s' was successfull")
+            return result
         except (AttributeError, KeyError, ValueError) as exception:
             if not self.logger is None:
                 self.logger.error(
@@ -1110,7 +1152,7 @@ class WebAgentAccount(Account, WebAgent):
                     return followers, pointer
             except (ValueError, KeyError) as exception:
                 if not self.logger is None:
-                    self.logger.info(
+                    self.logger.error(
                         "Get '%s' followers was unsuccessfully: %s",
                         account,
                         str(exception),
@@ -1446,6 +1488,8 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
 
     @exception_manager.decorator
     async def checkpoint_handle(self, url, settings=None):
+        if not self.logger is None:
+            self.logger.info("Handle checkpoint page for '%s' started", self.username)
         response = await self.get_request(url)
         try:
             match = re.search(
@@ -1465,6 +1509,8 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
             types = []
             for d in data:
                 types.append({"label": d["label"].lower().split(":")[0], "value": d["value"]})
+            if not self.logger is None:
+                self.logger.info("Handle checkpoint page for '%s' was successfull", self.username)
             return {"navigation": navigation, "types": types}
         except (AttributeError, KeyError, ValueError) as exception:
             if not self.logger is None:
@@ -1477,6 +1523,8 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
 
     @exception_manager.decorator
     async def checkpoint_send(self, checkpoint_url, forward_url, choice, settings=None):
+        if not self.logger is None:
+            self.logger.info("Send verify code for '%s' started", self.username)
         response = await self.action_request(
             referer=checkpoint_url,
             url=forward_url,
@@ -1485,6 +1533,8 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
 
         try:
             navigation = (await response.json())["navigation"]
+            if not self.logger is None:
+                self.logger.info("Send verify code for '%s' was successfully", self.username)
             return {
                 key: "https://instagram.com" + value for key, value in navigation.items()
             }
@@ -1500,12 +1550,16 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
 
     @exception_manager.decorator
     async def checkpoint_replay(self, forward, replay):
+        if not self.logger is None:
+            self.logger.info("Resend verify code for '%s' started")
         response = await self.action_request(
             referer=forward,
             url=replay,
         )
         try:
             navigation = (await response.json())["navigation"]
+            if not self.logger is None:
+                self.logger.info("Resend verify code for '%s' was successfull")
             return {
                 key: "https://instagram.com" + value for key, value in navigation.items()
             }
@@ -1520,6 +1574,8 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
 
     @exception_manager.decorator
     async def checkpoint(self, url, code):
+        if not self.logger is None:
+            self.logger.info("Verify account '%s' started")
         response = await self.action_request(
             referer=url,
             url=url,
@@ -1527,7 +1583,10 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         )
 
         try:
-            return (await response.json())["status"] == "ok"
+            result = (await response.json())["status"] == "ok"
+            if not self.logger is None:
+                self.logger.info("Verify account '%s' was successfull")
+            return result
         except (AttributeError, KeyError, ValueError) as exception:
             if not self.logger is None:
                 self.logger.error(
@@ -1697,7 +1756,7 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
                     return followers, pointer
             except (ValueError, KeyError) as exception:
                 if not self.logger is None:
-                    self.logger.info(
+                    self.logger.error(
                         "Get '%s' followers was unsuccessfully: %s",
                         account,
                         str(exception),

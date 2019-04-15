@@ -947,12 +947,13 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def checkpoint_replay(self, forward, replay):
+    def checkpoint_replay(self, forward_url, replay_url, settings=None):
         if not self.logger is None:
             self.logger.info("Resend verify code for '%s' started")
         response = self.action_request(
-            referer=forward,
-            url=replay,
+            url=replay_url,
+            referer=forward_url,
+            settings=settings,
         )
         try:
             navigation = response.json()["navigation"]
@@ -971,13 +972,14 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    def checkpoint(self, url, code):
+    def checkpoint(self, url, code, settings=None):
         if not self.logger is None:
             self.logger.info("Verify account '%s' started")
         response = self.action_request(
             referer=url,
             url=url,
             data={"security_code": code},
+            settings=settings,
         )
 
         try:
@@ -1549,12 +1551,13 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    async def checkpoint_replay(self, forward, replay):
+    async def checkpoint_replay(self, forward_url, replay_url, settings=None):
         if not self.logger is None:
             self.logger.info("Resend verify code for '%s' started")
         response = await self.action_request(
-            referer=forward,
-            url=replay,
+            url=replay_url,
+            referer=forward_url,
+            settings=settings,
         )
         try:
             navigation = (await response.json())["navigation"]
@@ -1573,13 +1576,14 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
-    async def checkpoint(self, url, code):
+    async def checkpoint(self, url, code, settings=None):
         if not self.logger is None:
             self.logger.info("Verify account '%s' started")
         response = await self.action_request(
             referer=url,
             url=url,
             data={"security_code": code},
+            settings=settings,
         )
 
         try:

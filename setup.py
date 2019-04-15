@@ -4,7 +4,7 @@ from os.path import join, dirname
 
 setup(
     name = "instagram",
-    version = "2.0",
+    version = "2.1",
     author = "Oleg Yurchik",
     author_email = "oleg.yurchik@protonmail.com",
     url = "https://github.com/OlegYurchik/pyInstagram",

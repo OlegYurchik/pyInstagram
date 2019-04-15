@@ -51,8 +51,7 @@ or
 After installation, you can use the library in your code. Below is a sneak example of using the
 library
 ```python3
-from instaparser.agents import WebAgent
-from instaparser.entities import Account, Media
+from instagram import Account, Media, WebAgent
 
 agent = WebAgent()
 account = Account("zuck")

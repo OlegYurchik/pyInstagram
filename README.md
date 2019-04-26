@@ -24,6 +24,7 @@ User Guide
 * [Entities](#entities)
   * [Account](#account)
   * [Media](#media)
+  * [Story] (#story)
   * [Location](#location)
   * [Tag](#tag)
   * [Comment](#comment)

@@ -472,7 +472,7 @@ do
 done
 ``` 
 ## Contribute repo
-Also you can add a new feature and send it using the requester pool
+Also you can add a new feature and send it using the requester pull
 ## Donate 
 A win-win option is to send me a couple of cents for a cup of coffee
 [![paypal](https://img.shields.io/badge/-PayPal-blue.svg)](

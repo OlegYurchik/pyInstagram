@@ -420,7 +420,7 @@ class WebAgent:
 
 class AsyncWebAgent:
     def __init__(self, cookies=None, logger=None):
-        self.rhx_gix = None
+        self.rhx_gis = None
         self.csrf_token = None
         self.session = aiohttp.ClientSession(cookies=cookies)
         self.logger = logger

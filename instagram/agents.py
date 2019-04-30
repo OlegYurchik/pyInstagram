@@ -805,6 +805,12 @@ class AsyncWebAgent:
         else:
             settings["data"] = data
 
+        if not self.logger is None:
+            self.logger.info("URL: %s", url)
+            self.logger.info("HEADERS: %s", headers)
+            self.logger.info("CSRF: %s", self.csrf_token)
+            self.logger.info("RHX: %s", self.rhx_gis)
+
         return await self.post_request(url, **settings)
 
     async def get_request(self, *args, **kwargs):

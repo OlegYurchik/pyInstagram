@@ -1466,6 +1466,12 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
             settings["data"] = {}
         settings["data"].update({"username": self.username, "password": password})
 
+        if not self.logger is None:
+            self.logger.info("URL: %s", url)
+            self.logger.info("HEADERS: %s", headers)
+            self.logger.info("CSRF: %s", self.csrf_token)
+            self.logger.info("RHX: %s", self.rhx_gis)
+
         response = await self.post_request(
             "https://www.instagram.com/accounts/login/ajax/",
             **settings,

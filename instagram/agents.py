@@ -1467,8 +1467,8 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         settings["data"].update({"username": self.username, "password": password})
 
         if not self.logger is None:
-            self.logger.info("URL: %s", url)
-            self.logger.info("HEADERS: %s", headers)
+            self.logger.info("URL: %s", "https://www.instagram.com/accounts/login/ajax/")
+            self.logger.info("HEADERS: %s", settings["headers"])
             self.logger.info("CSRF: %s", self.csrf_token)
             self.logger.info("RHX: %s", self.rhx_gis)
 
@@ -1601,7 +1601,7 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         try:
             result = (await response.json())["status"] == "ok"
             if not self.logger is None:
-                self.logger.info("Verify account '%s' was successfull")
+                self.logger.info("Verify account '%s' was successfull", self.username)
             return result
         except (AttributeError, KeyError, ValueError) as exception:
             if not self.logger is None:

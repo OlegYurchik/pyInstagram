@@ -24,7 +24,7 @@ User Guide
 * [Entities](#entities)
   * [Account](#account)
   * [Media](#media)
-  * [Story] (#story)
+  * [Story](#story)
   * [Location](#location)
   * [Tag](#tag)
   * [Comment](#comment)
@@ -433,9 +433,9 @@ from instagram import WebAgent
 
 settings = {
     "proxies": {
-        'http': 'http://example.net:8888',
-        'https': 'https://example.net:8888'
-    }
+        "http": "http://example.net:8888",
+        "https": "https://example.net:8888",
+    },
 }
 
 agent = WebAgent()

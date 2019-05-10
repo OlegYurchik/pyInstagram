@@ -431,9 +431,15 @@ while not pointer is None:
 ```python3
 from instagram import WebAgent
 
-settings = {"proxies": {"any_ip": any_port}}
+settings = {
+    "proxies": {
+        'http': 'http://example.net:8888',
+        'https': 'https://example.net:8888'
+    }
+}
 
-agent = WebAgent(settings=settings)
+agent = WebAgent()
+agent.update(settings=settings)
 ```
 * Change http handler
 ```python3

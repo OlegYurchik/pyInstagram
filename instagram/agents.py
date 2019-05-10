@@ -1294,6 +1294,57 @@ class WebAgentAccount(Account, WebAgent):
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator
+    def save(self, media, settings=None):
+        if not self.logger is None:
+            self.logger.info("Save '%s' started", media)
+        if not isinstance(media, Media):
+            raise TypeError("'media' must be Media type")
+
+        if media.id is None:
+            self.update(media, settings=settings)
+
+        response = self.action_request(
+            referer="https://www.instagram.com/p/%s/" % media.code,
+            url="https://www.instagram.com/web/save/%s/save/" % media.id,
+            settings=settings,
+        )
+
+        try:
+            if not self.logger is None:
+                self.logger.info("Save '%s' was successfully", media)
+            return response.json()["status"] == "ok"
+        except (ValueError, KeyError) as exception:
+            if not self.logger is None:
+                self.logger.error("Save '%s' was unsuccessfully: %s", media, str(exception))
+            raise UnexpectedResponse(exception, response.url)
+
+    @exception_manager.decorator
+    def unsave(self, media, settings=None):
+        if not self.logger is None:
+            self.logger.info("Unsave '%s' started", media)
+        if not isinstance(media, Media):
+            raise TypeError("'media' must be Media type")
+
+        if media.id is None:
+            self.update(media, settings=settings)
+
+        response = self.action_request(
+            referer="https://www.instagram.com/p/%s/" % media.code,
+            url="https://www.instagram.com/web/save/%s/unsave/" % media.id,
+            settings=settings,
+        )
+
+        try:
+            result = response.json()["status"] == "ok"
+            if not self.logger is None:
+                self.logger.info("Unsave '%s' was successfully", media)
+            return result
+        except (ValueError, KeyError) as exception:
+            if not self.logger is None:
+                self.logger.error("Unsave '%s' was unsuccessfully: %s", media, str(exception))
+            raise UnexpectedResponse(exception, response.url)
+
+    @exception_manager.decorator
     def add_comment(self, media, text, settings=None):
         if not self.logger is None:
             self.logger.info("Comment '%s' started")
@@ -1900,6 +1951,58 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
         except (ValueError, KeyError) as exception:
             if not self.logger is None:
                 self.logger.error("Like '%s' was unsuccessfully: %s", media, str(exception))
+            raise UnexpectedResponse(exception, response.url)
+
+    @exception_manager.decorator
+    async def save(self, media, settings=None):
+        if not self.logger is None:
+            self.logger.info("Save '%s' started", media)
+        if not isinstance(media, Media):
+            raise TypeError("'media' must be Media type")
+
+        if media.id is None:
+            await self.update(media, settings=settings)
+
+        response = await self.action_request(
+            referer="https://www.instagram.com/p/%s/" % media.code,
+            url="https://www.instagram.com/web/save/%s/save/" % media.id,
+            settings=settings,
+        )
+
+        try:
+            result = (await response.json())["status"] == "ok"
+            if not self.logger is None:
+                self.logger.info("Save '%s' was successfully", media)
+            return result
+        except (ValueError, KeyError) as exception:
+            if not self.logger is None:
+                self.logger.error("Save '%s' was unsuccessfully: %s", media, str(exception))
+            raise UnexpectedResponse(exception, response.url)
+
+    @exception_manager.decorator
+    async def unsave(self, media, settings=None):
+        if not self.logger is None:
+            self.logger.info("Unsave '%s' started", media)
+        if not isinstance(media, Media):
+            raise TypeError("'media' must be Media type")
+
+        if media.id is None:
+            await self.update(media, settings=settings)
+
+        response = await self.action_request(
+            referer="https://www.instagram.com/p/%s/" % media.code,
+            url="https://www.instagram.com/web/save/%s/unsave/" % media.id,
+            settings=settings,
+        )
+
+        try:
+            result = (await response.json())["status"] == "ok"
+            if not self.logger is None:
+                self.logger.info("Unsave '%s' was successfully", media)
+            return result
+        except (ValueError, KeyError) as exception:
+            if not self.logger is None:
+                self.logger.error("Unsave '%s' was unsuccessfully: %s", media, str(exception))
             raise UnexpectedResponse(exception, response.url)
 
     @exception_manager.decorator

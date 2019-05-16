@@ -18,6 +18,7 @@ exception_manager = ExceptionManager()
 
 class WebAgent:
     def __init__(self, cookies=None, logger=None):
+        self.rhx_gis = None
         self.csrf_token = None
         self.session = requests.Session()
         if cookies:
@@ -46,6 +47,7 @@ class WebAgent:
                 response.text,
             )
             data = json.loads(match.group(1))
+            self.rhx_gis = data.get("rhx_gis", "")
             self.csrf_token = data["config"]["csrf_token"]
 
             if obj is None:
@@ -358,12 +360,12 @@ class WebAgent:
         settings["params"].update({"query_hash": query_hash})
 
         settings["params"]["variables"] = variables
-        # gis = "%s:%s" % (self.nonce, variables)
+        gis = "%s:%s" % (self.rhx_gis, variables)
         if not "headers" in settings:
             settings["headers"] = dict()
         settings["headers"].update({
             # "X-IG-App-ID": "936619743392459",
-            # "X-Instagram-GIS": hashlib.md5(gis.encode("utf-8")).hexdigest(),
+            "X-Instagram-GIS": hashlib.md5(gis.encode("utf-8")).hexdigest(),
             "X-Requested-With": "XMLHttpRequest",
             "Referer": referer,
         })
@@ -418,6 +420,7 @@ class WebAgent:
 
 class AsyncWebAgent:
     def __init__(self, cookies=None, logger=None):
+        self.rhx_gis = None
         self.csrf_token = None
         self.session = aiohttp.ClientSession(cookies=cookies)
         self.logger = logger
@@ -447,6 +450,7 @@ class AsyncWebAgent:
                 await response.text(),
             )
             data = json.loads(match.group(1))
+            self.rhx_gis = data.get("rhx_gis", "")
             self.csrf_token = data["config"]["csrf_token"]
 
             if obj is None:
@@ -762,12 +766,12 @@ class AsyncWebAgent:
         settings["params"].update({"query_hash": query_hash})
 
         settings["params"]["variables"] = variables
-        # gis = "%s:%s" % (self.nonce, variables)
+        gis = "%s:%s" % (self.rhx_gis, variables)
         if not "headers" in settings:
             settings["headers"] = dict()
         settings["headers"].update({
-            "X-IG-App-ID": "936619743392459",
-            # "X-Instagram-GIS": hashlib.md5(gis.encode("utf-8")).hexdigest(),
+            # "X-IG-App-ID": "936619743392459",
+            "X-Instagram-GIS": hashlib.md5(gis.encode("utf-8")).hexdigest(),
             "X-Requested-With": "XMLHttpRequest",
             "Referer": referer,
         })

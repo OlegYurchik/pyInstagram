@@ -24,7 +24,7 @@ User Guide
 * [Entities](#entities)
   * [Account](#account)
   * [Media](#media)
-  * [Story] (#story)
+  * [Story](#story)
   * [Location](#location)
   * [Tag](#tag)
   * [Comment](#comment)
@@ -431,9 +431,15 @@ while not pointer is None:
 ```python3
 from instagram import WebAgent
 
-settings = {"proxies": {"any_ip": any_port}}
+settings = {
+    "proxies": {
+        "http": "http://example.net:8888",
+        "https": "https://example.net:8888",
+    },
+}
 
-agent = WebAgent(settings=settings)
+agent = WebAgent()
+agent.update(settings=settings)
 ```
 * Change http handler
 ```python3

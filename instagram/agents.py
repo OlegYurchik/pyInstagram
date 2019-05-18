@@ -888,7 +888,7 @@ class WebAgentAccount(Account, WebAgent):
     def checkpoint_handle(self, url, settings=None):
         if not self.logger is None:
             self.logger.info("Handle checkpoint page for '%s' started", self.username)
-        response = self.get_request(url)
+        response = self.get_request(url, **settings)
         try:
             match = re.search(
                 r"<script[^>]*>\s*window._sharedData\s*=\s*((?!<script>).*)\s*;\s*</script>",
@@ -927,6 +927,7 @@ class WebAgentAccount(Account, WebAgent):
             referer=checkpoint_url,
             url=forward_url,
             data={"choice": choice},
+            settings=settings,
         )
 
         try:
@@ -1543,7 +1544,7 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
     async def checkpoint_handle(self, url, settings=None):
         if not self.logger is None:
             self.logger.info("Handle checkpoint page for '%s' started", self.username)
-        response = await self.get_request(url)
+        response = await self.get_request(url, **settings)
         try:
             match = re.search(
                 r"<script[^>]*>\s*window._sharedData\s*=\s*((?!<script>).*)\s*;\s*</script>",
@@ -1582,6 +1583,7 @@ class AsyncWebAgentAccount(Account, AsyncWebAgent):
             referer=checkpoint_url,
             url=forward_url,
             data={"choice": choice},
+            settings=settings,
         )
 
         try:

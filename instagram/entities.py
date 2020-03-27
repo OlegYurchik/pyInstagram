@@ -150,7 +150,18 @@ class Media(UpdatableElement):
         if "edge_sidecar_to_children" in data:
             for edge in data["edge_sidecar_to_children"]["edges"]:
                 if edge["node"].get("shortcode", self.code) != self.code:
-                    self.album.add(Media(edge["node"]["shortcode"]))
+                    child = Media(edge["node"]["shortcode"])
+                    child.id = edge["node"]["id"]
+                    child.is_video = edge["node"]["is_video"]
+                    if child.is_video and "video_url" in edge["node"]:
+                        child.video_url = edge["node"]["video_url"]
+                    child.display_url = edge["node"]["display_url"]
+                    if "display_resources" in edge["node"]:
+                        child.resources = [resource["src"] for resource in edge["node"]["display_resources"]]
+                    else:
+                        child.resources = [resource["src"] for resource in edge["node"]["thumbnail_resources"]]
+                    child.is_album = False
+                    self.album.add(child)
 
 
 class Story(Element):

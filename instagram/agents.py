@@ -387,8 +387,9 @@ class WebAgent:
         headers = {
             "Referer": referer,
             "X-CSRFToken": self.csrf_token,
-            "X-Instagram-Ajax": "1",
+            "X-Instagram-Ajax": "543e5253a719",
             "X-Requested-With": "XMLHttpRequest",
+            "X-IG-App-ID": "936619743392459",
         }
         if "headers" in settings:
             settings["headers"].update(headers)
@@ -1455,7 +1456,7 @@ class WebAgentAccount(Account, WebAgent):
             self.update(account, settings=settings)
 
         response = self.action_request(
-            referer="https://www.instagram.com/%s" % account.username,
+            referer="https://www.instagram.com/%s/" % account.username,
             url="https://www.instagram.com/web/friendships/%s/unfollow/" % account.id,
             settings=settings,
         )

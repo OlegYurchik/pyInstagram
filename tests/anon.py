@@ -426,3 +426,4 @@ async def test_async_get_comments_pointer(async_agent, delay, settings, count, s
         data.extend(tmp)
 
     assert (pointer is None) == (media.likes_count == len(data))
+

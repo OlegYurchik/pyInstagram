@@ -10,7 +10,8 @@ setup(
     url = "https://github.com/OlegYurchik/pyInstagram",
     description = "",
     long_description = open(join(dirname(__file__), "README.md")).read(),
-    packages = find_packages(),
-    install_requires = ["aiohttp", "pytest", "pytest-asyncio", "pytest-random-order", "requests"],
-    test_suite = "tests/",
+    packages = find_packages(exclude=["tests"]),
+    install_requires = ["aiohttp", "requests"],
+    tests_require = ["pytest", "pytest-asyncio", "pytest-random-order"],
+    test_suite = "tests",
 )

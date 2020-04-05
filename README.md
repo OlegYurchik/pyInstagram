@@ -270,7 +270,7 @@ agent = WebAgentAccount("username")
 ```
 or asyncio authorized agent as follows
 ```python3
-from instagram inport AsyncWebAgentAccount
+from instagram import AsyncWebAgentAccount
 
 agent = AsyncWebAgentAccount("username")
 ```

@@ -1,53 +1,56 @@
 class ElementConstructor(type):
-    def __new__(mcs, name, classes, fields):
-        def delete(self):
-            key = self.__getattribute__(self.primary_key)
-            if key in self.cache:
-                del self.cache[key]
-
-        @classmethod
-        def clear_cache(cls):
-            cls.cache.clear()
-
-        fields["__del__"] = delete
-        fields["clear_cache"] = clear_cache
-        fields["__str__"] = lambda self: str(self.__getattribute__(self.primary_key))
-        fields["__repr__"] = lambda self: str(self.__getattribute__(self.primary_key))
+    def __new__(cls, name, classes, fields):
         fields["cache"] = dict()
 
-        return super().__new__(mcs, name, classes, fields)
+        return super().__new__(cls, name, classes, fields)
 
-    def __call__(cls, key, *args, **kwargs):
+
+# Common abstract classes
+class Element(metaclass=ElementConstructor):
+    def __new__(cls, *args, **kwargs):
         if not str(key) in cls.cache:
-            cls.cache[str(key)] = super().__call__(str(key), *args, **kwargs)
+            cls.cache[str(key)] = super().__new__(cls, *args, **kwargs)
 
         return cls.cache[str(key)]
 
+    def __repr__(self):
+        return str(self.__getattribute__(self.primary_key))
 
-# Common abstract classes 
-class Element(metaclass=ElementConstructor):
+    def delete(self):
+        key = self.__getattribute__(self.primary_key)
+        if key in self.cache:
+            del self.cache[key]
+
+    @classmethod
+    def clear_cache(cls):
+        cls.cache.clear()
+
+    @property
     def primary_key(self):
         raise NotImplementedError
 
 
 class UpdatableElement(Element):
-    def set_data(self):
-        raise NotImplementedError
-    
+    @property
     def entry_data_path(self):
         raise NotImplementedError
 
+    @property
     def base_url(self):
+        raise NotImplementedError
+
+    def set_data(self, data):
         raise NotImplementedError
 
 
 class HasMediaElement(UpdatableElement):
+    @property
     def media_path(self):
         raise NotImplementedError
-    
+
+    @property
     def media_query_hash(self):
         raise NotImplementedError
-
 
 
 class Account(HasMediaElement):

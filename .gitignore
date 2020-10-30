@@ -1,6 +1,8 @@
 __pycache__
 .pytest_cache
 *.egg-info
+.eggs
+.idea
 venv
 tests/config.json
 deploy/build

@@ -1,13 +1,20 @@
-class ElementConstructor(type):
-    def __new__(cls, name, classes, fields):
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+)
+from urllib.parse import urljoin
+
+
+class EntityConstructor(type):
+    def __new__(cls, name: str, classes: Iterable[type], fields: Dict[str, Any]):
         fields["cache"] = dict()
 
         return super().__new__(cls, name, classes, fields)
 
 
-# Common abstract classes
-class Element(metaclass=ElementConstructor):
-    def __new__(cls, *args, **kwargs):
+class Entity(metaclass=EntityConstructor):
+    def __new__(cls, key, *args, **kwargs):
         if not str(key) in cls.cache:
             cls.cache[str(key)] = super().__new__(cls, *args, **kwargs)
 
@@ -30,35 +37,53 @@ class Element(metaclass=ElementConstructor):
         raise NotImplementedError
 
 
-class UpdatableElement(Element):
-    @property
-    def entry_data_path(self):
-        raise NotImplementedError
+class UpdatableEntity(Entity):
+    def get_web_path(self):
+        return urljoin(self.web_base_path, str(getattr(self, self.primary_key)))
+
+    @classmethod
+    def get_from_web_entry_data_path(cls, data):
+        for key in cls.web_entry_data_path:
+            data = data[key]
+        return data
 
     @property
-    def base_url(self):
-        raise NotImplementedError
-
-    def set_data(self, data):
-        raise NotImplementedError
-
-
-class HasMediaElement(UpdatableElement):
-    @property
-    def media_path(self):
+    def web_entry_data_path(self):
         raise NotImplementedError
 
     @property
-    def media_query_hash(self):
+    def web_base_path(self):
+        raise NotImplementedError
+
+    def set_web_data(self, data):
+        raise NotImplementedError
+
+    def set_mobile_data(self, data):
         raise NotImplementedError
 
 
-class Account(HasMediaElement):
+class HasMediaEntity(UpdatableEntity):
+    @classmethod
+    def get_from_web_media_path(cls, data):
+        for key in cls.web_media_path:
+            data = data[key]
+        return data
+
+    @property
+    def web_media_path(self):
+        raise NotImplementedError
+
+    @property
+    def web_media_query_hash(self):
+        raise NotImplementedError
+
+
+class Account(HasMediaEntity):
     primary_key = "username"
-    entry_data_path = ("ProfilePage", 0, "graphql", "user")
-    base_url = ""
-    media_path = ("user", "edge_owner_to_timeline_media")
-    media_query_hash = "c6809c9c025875ac6f02619eae97a80e"
+    web_entry_data_path = ("ProfilePage", 0, "graphql", "user")
+    web_base_path = ""
+    web_media_path = ("user", "edge_owner_to_timeline_media")
+    web_media_query_hash = "c6809c9c025875ac6f02619eae97a80e"
 
     def __init__(self, username):
         self.id = None
@@ -79,7 +104,7 @@ class Account(HasMediaElement):
         self.follows = set()
         self.followers = set()
 
-    def set_data(self, data):
+    def set_web_data(self, data):
         self.id = data["id"]
         self.full_name = data["full_name"]
         self.profile_pic_url = data["profile_pic_url"]
@@ -93,11 +118,25 @@ class Account(HasMediaElement):
         self.is_verified = data["is_verified"]
         self.country_block = data["country_block"]
 
+    def set_mobile_data(self, data):
+        self.id = data["pk"]
+        self.full_name = data["full_name"]
+        self.profile_pic_url = data["profile_pic_url"]
+        self.profile_pic_url_hd = data["hd_profile_pic_url_info"]["url"]
+        # self.fb_page = data["connected_fb_page"]
+        self.biography = data["biography"]
+        self.follows_count = data["following_count"]
+        self.followers_count = data["follower_count"]
+        self.media_count = data["media_count"]
+        self.is_private = data["is_private"]
+        self.is_verified = data["is_verified"]
+        # self.country_block = data["country_block"]
 
-class Media(UpdatableElement):
+
+class Media(UpdatableEntity):
     primary_key = "code"
-    entry_data_path = ("PostPage", 0, "graphql", "shortcode_media")
-    base_url = "p/"
+    web_entry_data_path = ("PostPage", 0, "graphql", "shortcode_media")
+    web_base_path = "p/"
 
     def __init__(self, code):
         self.id = None
@@ -120,7 +159,7 @@ class Media(UpdatableElement):
         self.likes = set()
         self.comments = set()
 
-    def set_data(self, data):
+    def set_web_data(self, data):
         self.id = data["id"]
         self.code = data["shortcode"]
         if data["edge_media_to_caption"]["edges"]:
@@ -132,7 +171,10 @@ class Media(UpdatableElement):
         self.date = data["taken_at_timestamp"]
         if "location" in data and data["location"] and "id" in data["location"]:
             self.location = Location(data["location"]["id"])
-        self.likes_count = data["edge_media_preview_like"]["count"]
+        if "edge_media_preview_like" in data:
+            self.likes_count = data["edge_media_preview_like"]["count"]
+        elif "edge_liked_by":
+            self.likes_count = data["edge_liked_by"]
         if "edge_media_to_comment" in data:
             self.comments_count = data["edge_media_to_comment"]["count"]
         else:
@@ -167,19 +209,19 @@ class Media(UpdatableElement):
                     self.album.add(child)
 
 
-class Story(Element):
+class Story(Entity):
     primary_key = "id"
 
     def __init__(self, id):
         self.id = id
 
 
-class Location(HasMediaElement):
+class Location(HasMediaEntity):
     primary_key = "id"
-    entry_data_path = ("LocationsPage", 0, "graphql", "location")
-    base_url = "explore/locations/"
-    media_path = ("location", "edge_location_to_media")
-    media_query_hash = "ac38b90f0f3981c42092016a37c59bf7"
+    web_entry_data_path = ("LocationsPage", 0, "graphql", "location")
+    web_base_path = "explore/locations/"
+    web_media_path = ("location", "edge_location_to_media")
+    web_media_query_hash = "ac38b90f0f3981c42092016a37c59bf7"
 
     def __init__(self, id):
         self.id = id
@@ -193,7 +235,7 @@ class Location(HasMediaElement):
         self.media = set()
         self.top_posts = set()
 
-    def set_data(self, data):
+    def set_web_data(self, data):
         self.id = data["id"]
         self.slug = data["slug"]
         self.name = data["name"]
@@ -206,12 +248,12 @@ class Location(HasMediaElement):
             self.top_posts.add(Media(node["node"]["shortcode"]))
 
 
-class Tag(HasMediaElement):
+class Tag(HasMediaEntity):
     primary_key = "name"
-    entry_data_path = ("TagPage", 0, "graphql", "hashtag")
-    base_url = "explore/tags/"
-    media_path = ("hashtag", "edge_hashtag_to_media")
-    media_query_hash = "ded47faa9a1aaded10161a2ff32abb6b"
+    web_entry_data_path = ("TagPage", 0, "graphql", "hashtag")
+    web_base_path = "explore/tags/"
+    web_media_path = ("hashtag", "edge_hashtag_to_media")
+    web_media_query_hash = "ded47faa9a1aaded10161a2ff32abb6b"
 
     def __init__(self, name):
         self.name = name
@@ -220,14 +262,14 @@ class Tag(HasMediaElement):
         self.media = set()
         self.top_posts = set()
 
-    def set_data(self, data):
+    def set_web_data(self, data):
         self.name = data["name"]
         self.media_count = data["edge_hashtag_to_media"]["count"]
         for node in data["edge_hashtag_to_top_posts"]["edges"]:
             self.top_posts.add(Media(node["node"]["shortcode"]))
 
 
-class Comment(Element):
+class Comment(Entity):
     primary_key = "id"
 
     def __init__(self, id, media, owner, text, created_at):

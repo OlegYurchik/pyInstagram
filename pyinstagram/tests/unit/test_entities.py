@@ -20,58 +20,48 @@ def id():
 
 
 @pytest.mark.parametrize("id", [id() for _ in range(3)])
-def test_clear_cache_account(id):
+def test_account_creation(id):
     account = Account(id)
-    assert Account.cache == {id: account}
-
-    Account.clear_cache()
-    assert Account.cache == dict()
+    assert getattr(account, account.primary_key) == id
+    assert len(Account.cache) == 1 and Account.cache[id] is account
 
 
 @pytest.mark.parametrize("id", [id() for _ in range(3)])
-def test_clear_cache_media(id):
+def test_media_creation(id):
     media = Media(id)
-    assert Media.cache == {id: media}
-
-    Media.clear_cache()    
-    assert Media.cache == dict()
+    assert getattr(media, media.primary_key) == id
+    assert len(Media.cache) == 1 and Media.cache[id] is media
 
 
 @pytest.mark.parametrize("id", [id() for _ in range(3)])
-def test_clear_cache_location(id):
+def test_location_creation(id):
     location = Location(id)
-    assert Location.cache == {id: location}
-
-    Location.clear_cache()
-    assert Location.cache == dict()
+    assert getattr(location, location.primary_key) == id
+    assert len(Location.cache) == 1 and Location.cache[id] is location
 
 
 @pytest.mark.parametrize("id", [id() for _ in range(3)])
-def test_clear_cache_tag(id):
+def test_tag_creation(id):
     tag = Tag(id)
-    assert Tag.cache == {id: tag}
-
-    Tag.clear_cache()
-    assert Tag.cache == dict()
+    assert getattr(tag, tag.primary_key) == id
+    assert len(Tag.cache) == 1 and Tag.cache[id] is tag
 
 
 @pytest.mark.parametrize("id", [id() for _ in range(3)])
-def test_clear_cache_comment(id):
+def test_comment_creation(id):
     account = Account("test")
     media = Media("test")
     comment = Comment(id, media=media, owner=account, text="test", created_at=0)
-    assert Comment.cache == {id: comment}  
-
-    Comment.clear_cache()
-    assert Comment.cache == dict()
-    assert Media.cache == {"test": media}
-    assert Account.cache == {"test": account}
+    assert getattr(comment, comment.primary_key) == id
+    assert comment.media is media
+    assert comment.owner is account
+    assert comment.text == "test"
+    assert comment.created_at == 0
+    assert len(Comment.cache) == 1 and Comment.cache[id] is comment
 
 
 @pytest.mark.parametrize("id", [id() for _ in range(3)])
-def test_clear_cache_story(id):
+def test_story_creation(id):
     story = Story(id)
-    assert Story.cache == {id: story}
-    
-    Story.clear_cache()
-    assert Story.cache == dict()
+    assert getattr(story, story.primary_key) == id
+    assert len(Story.cache) == 1 and Story.cache[id] is story

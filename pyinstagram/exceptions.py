@@ -1,5 +1,4 @@
 from aiohttp import ClientResponseError
-from requests.exceptions import HTTPError
 
 
 class InstagramException(Exception):

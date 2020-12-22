@@ -16,7 +16,7 @@ class EntityConstructor(type):
 class Entity(metaclass=EntityConstructor):
     def __new__(cls, key, *args, **kwargs):
         if not str(key) in cls.cache:
-            cls.cache[str(key)] = super().__new__(cls, *args, **kwargs)
+            cls.cache[str(key)] = super().__new__(cls)
 
         return cls.cache[str(key)]
 

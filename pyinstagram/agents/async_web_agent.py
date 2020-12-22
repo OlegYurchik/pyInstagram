@@ -56,6 +56,7 @@ class AsyncWebAgent:
     async def _get_request(self, path: str, *args, **kwargs) -> str:
         if not isinstance(path, str):
             raise TypeError("'path' must be str type")
+        print("URL:", urljoin(self.API_URL, path))
         response = await self.session.get(url=urljoin(self.API_URL, path), *args, **kwargs)
         return await response.text()
 
@@ -132,7 +133,9 @@ class AsyncWebAgent:
         self.logger.debug("Update '%s' started", entity)
 
         path = "" if entity is None else entity.get_web_path()
+        print("PATH:", path)
         content = await self._get_request(path=path, **settings)
+        print("CONTENT:", content[:500])
         data = self._get_shared_data(content=content)
 
         self.rhx_gis = data.get("rhx_gis", "")
